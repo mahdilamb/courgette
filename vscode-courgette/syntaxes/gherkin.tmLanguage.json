@@ -1,0 +1,124 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Gherkin",
+  "scopeName": "source.gherkin",
+  "patterns": [
+    { "include": "#comment" },
+    { "include": "#language" },
+    { "include": "#tag" },
+    { "include": "#feature" },
+    { "include": "#rule" },
+    { "include": "#background" },
+    { "include": "#scenario_outline" },
+    { "include": "#scenario" },
+    { "include": "#examples" },
+    { "include": "#step" },
+    { "include": "#table" },
+    { "include": "#docstring" },
+    { "include": "#placeholder" }
+  ],
+  "repository": {
+    "comment": {
+      "match": "^\\s*(#.*)$",
+      "name": "comment.line.number-sign.gherkin"
+    },
+    "language": {
+      "match": "^\\s*(#\\s*language\\s*:.*)$",
+      "name": "comment.line.language.gherkin",
+      "captures": {
+        "1": { "name": "meta.preprocessor.language.gherkin" }
+      }
+    },
+    "tag": {
+      "match": "@[^\\s@]+",
+      "name": "entity.name.tag.gherkin"
+    },
+    "feature": {
+      "match": "^\\s*(Feature|Ability|Business Need|Fonctionnalité|Funktionalität|Funcionalidade|Funcionalidad|Функция|Функціонал|機能|功能|기능|Fitur|Özellik|Tính năng|Mogućnost|Właściwość|Egenskap|Egenskab|Ominaisuus|Δυνατότητα|Jellemző|Osobina|Savybė|Funkcionalitāte|Funcționalitate|Funksie)\\s*:(.*)",
+      "captures": {
+        "1": { "name": "keyword.control.feature.gherkin" },
+        "2": { "name": "string.unquoted.feature-name.gherkin" }
+      }
+    },
+    "rule": {
+      "match": "^\\s*(Rule|Regel|Règle|Regra|Regla|Правило|ルール|规则|Aturan|Kural|Regel)\\s*:(.*)",
+      "captures": {
+        "1": { "name": "keyword.control.rule.gherkin" },
+        "2": { "name": "string.unquoted.rule-name.gherkin" }
+      }
+    },
+    "background": {
+      "match": "^\\s*(Background|Achtergrond|Hintergrund|Contexte|Contexto|Предыстория|背景|배경|Latar Belakang|Geçmiş|Bối cảnh|Pozadina|Założenia|Bakgrund|Baggrund|Tausta|Υπόβαθρο|Háttér|Pozadie|Kontekstas|Konteksts|Fundal|Agtergrond)\\s*:(.*)",
+      "captures": {
+        "1": { "name": "keyword.control.background.gherkin" },
+        "2": { "name": "string.unquoted.background-name.gherkin" }
+      }
+    },
+    "scenario_outline": {
+      "match": "^\\s*(Scenario Outline|Scenario Template|Scénario esquisse|Esquema do Cenário|Esquema del escenario|Структура сценария|シナリオテンプレ|シナリオアウトライン|场景大纲|시나리오 개요|Skenario konsep|Senaryo taslağı|Khung kịch bản|Skica scenarija|Szablon scenariusza|Scenariomall|Abstrakt Scenario|Tapausaihio|Περιγραφή Σεναρίου|Forgatókönyv vázlat|Náčrt Scenáru|Scenarijaus šablonas|Scenārija shēma|Structura scenariu|Situasie Uiteensetting)\\s*:(.*)",
+      "captures": {
+        "1": { "name": "keyword.control.scenario-outline.gherkin" },
+        "2": { "name": "string.unquoted.scenario-name.gherkin" }
+      }
+    },
+    "scenario": {
+      "match": "^\\s*(Scenario|Example|Scénario|Cenário|Escenario|Сценарий|Сценарій|シナリオ|场景|시나리오|Skenario|Senaryo|Kịch bản|Scenarij|Scenariusz|Scenario|Eksempel|Tapaus|Σενάριο|Forgatókönyv|Príklad|Scenarijus|Scenārijs|Scenariu|Voorbeeld|Situasie)\\s*:(.*)",
+      "captures": {
+        "1": { "name": "keyword.control.scenario.gherkin" },
+        "2": { "name": "string.unquoted.scenario-name.gherkin" }
+      }
+    },
+    "examples": {
+      "match": "^\\s*(Examples|Scenarios|Exemples|Exemplos|Ejemplos|Примеры|例|예|Contoh|Örnekler|Ví dụ|Primjeri|Przykłady|Exempel|Eksempler|Esimerkit|Παραδείγματα|Példák|Príklady|Pavyzdžiai|Piemēri|Exemple|Voorbeelde)\\s*:(.*)",
+      "captures": {
+        "1": { "name": "keyword.control.examples.gherkin" },
+        "2": { "name": "string.unquoted.examples-name.gherkin" }
+      }
+    },
+    "step": {
+      "comment": "Step lines — keyword colored by grammar, rest colored by syntaxDecorator.ts",
+      "match": "^\\s*(Given|When|Then|And|But|\\*|Soit|Etant donné|Etant donnée|Etant donnés|Etant données|Quand|Lorsque|Alors|Et|Mais|Gegeben sei|Angenommen|Wenn|Dann|Und|Aber|Dado|Dada|Dados|Dadas|Quando|Então|Entao|E|Mas|Dando|Cuando|Entonces|Y|Pero|Допустим|Пусть|К тому же|Когда|Тогда|И|Но|А также|前提|もし|ならば|かつ|しかし|假如|假设|假定|当|那么|而且|但是|同时|조건|만일|만약|먹었을때|그러면|그리고|하지만|단|Diberikan|Ketika|Maka|Dan|Tapi|Diketahui|Eğer ki|O zaman|Ve|Ama|Biết|Khi|Thì|Và|Nhưng|Zadano|Zadani|Zadana|Kad|Onda|Ali|I|Zakładając|Mając|Jeżeli|Kiedy|Wtedy|Oraz|Ale|Givet|När|Så|Och|Men|Oletetaan|Kun|Niin|Ja|Mutta|Δεδομένου|Όταν|Τότε|Και|Αλλά|Amennyiben|Adott|Ha|Amikor|Akkor|És|De|Pokiaľ|Keď|Tak|A|Ale|Duota|Kai|Tada|Ir|Bet|Ņemot vērā|Ja|Tad|Un|Bet|Dat fiind|Cand|Când|Atunci|Si|Și|Dar|Gegewe|Wanneer|Dan|En|Maar)\\s(.*)",
+      "captures": {
+        "1": { "name": "keyword.control.step.gherkin" },
+        "2": { "name": "meta.step-text.gherkin" }
+      }
+    },
+    "table": {
+      "comment": "Table rows — colors handled by syntaxDecorator.ts programmatically",
+      "match": "^\\s*\\|.*\\|\\s*$",
+      "name": "meta.table.gherkin"
+    },
+    "docstring": {
+      "patterns": [
+        {
+          "begin": "^\\s*(\"\"\")(.*)$",
+          "end": "^\\s*\"\"\"\\s*$",
+          "name": "string.quoted.other.docstring.gherkin",
+          "beginCaptures": {
+            "1": { "name": "punctuation.definition.string.begin.gherkin" },
+            "2": { "name": "entity.name.type.media-type.gherkin" }
+          },
+          "endCaptures": {
+            "0": { "name": "punctuation.definition.string.end.gherkin" }
+          }
+        },
+        {
+          "begin": "^\\s*(```)(.*)$",
+          "end": "^\\s*```\\s*$",
+          "name": "string.quoted.other.docstring.gherkin",
+          "beginCaptures": {
+            "1": { "name": "punctuation.definition.string.begin.gherkin" },
+            "2": { "name": "entity.name.type.media-type.gherkin" }
+          },
+          "endCaptures": {
+            "0": { "name": "punctuation.definition.string.end.gherkin" }
+          }
+        }
+      ]
+    },
+    "placeholder": {
+      "match": "<[^>]+>",
+      "name": "constant.other.placeholder.gherkin"
+    }
+  }
+}

@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Courgette BDD</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header>
+    <div class="logo" title="Courgette">
+      <svg width="36" height="36" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+        <ellipse cx="50" cy="55" rx="18" ry="38" fill="#5a9e3e" transform="rotate(-15 50 55)"/>
+        <ellipse cx="50" cy="55" rx="14" ry="34" fill="#6abf4b" transform="rotate(-15 50 55)"/>
+        <ellipse cx="48" cy="50" rx="4" ry="28" fill="#8fd474" transform="rotate(-15 50 55)" opacity="0.4"/>
+        <path d="M44 18 Q50 5 56 18" fill="#3d7a28" stroke="#2d5a15" stroke-width="1.5"/>
+        <path d="M40 20 Q50 8 60 20" fill="none" stroke="#3d7a28" stroke-width="1.5"/>
+        <circle cx="42" cy="42" r="1.5" fill="#4a8c2a" opacity="0.5"/>
+        <circle cx="55" cy="50" r="1.5" fill="#4a8c2a" opacity="0.5"/>
+        <circle cx="45" cy="60" r="1.5" fill="#4a8c2a" opacity="0.5"/>
+        <circle cx="52" cy="70" r="1.5" fill="#4a8c2a" opacity="0.5"/>
+      </svg>
+    </div>
+    <div>
+      <h1>Courgette</h1>
+      <p>Build and test behaviour scenarios</p>
+    </div>
+  </header>
+
+  <main>
+    <!-- Left: guided builder -->
+    <div class="builder-panel">
+
+      <!-- Feature -->
+      <section class="card">
+        <label class="card-label">Feature name</label>
+        <input id="feature-name" type="text" class="field" placeholder="e.g. User login" autofocus>
+        <label class="card-label secondary">Description (optional)</label>
+        <input id="feature-desc" type="text" class="field small" placeholder="e.g. Users can log in with email and password">
+      </section>
+
+      <!-- Scenarios -->
+      <div id="scenarios"></div>
+      <button id="btn-add-scenario" class="btn-add">+ Add Scenario</button>
+
+      <!-- Actions -->
+      <div class="actions">
+        <button id="btn-run" class="btn-primary" title="Ctrl+Enter">Run Tests</button>
+        <button id="btn-save" class="btn-secondary">Save Feature</button>
+        <button id="btn-preview" class="btn-secondary">Preview Gherkin</button>
+        <button id="btn-clear" class="btn-secondary" style="margin-left:auto" title="Clear all and start fresh">Clear</button>
+      </div>
+    </div>
+
+    <!-- Right: results / preview -->
+    <div class="output-panel">
+      <div id="output-tabs" class="tabs">
+        <button class="tab active" data-tab="results">Results</button>
+        <button class="tab" data-tab="preview">Gherkin Preview</button>
+      </div>
+      <div id="tab-results" class="tab-content active">
+        <div id="results" class="results-empty">
+          <p>Click <strong>Run Tests</strong> to see results here.</p>
+        </div>
+      </div>
+      <div id="tab-preview" class="tab-content">
+        <pre id="gherkin-preview" class="gherkin-preview"></pre>
+      </div>
+    </div>
+  </main>
+
+  <!-- Step row template -->
+  <template id="step-template">
+    <div class="step-row">
+      <select class="step-keyword">
+        <option value="Given">Given</option>
+        <option value="When">When</option>
+        <option value="Then">Then</option>
+        <option value="And">And</option>
+        <option value="But">But</option>
+      </select>
+      <div class="step-input-wrap">
+        <div class="step-highlight"></div>
+        <input type="text" class="step-input field" placeholder="start typing to see suggestions...">
+        <div class="step-autocomplete autocomplete-dropdown" hidden></div>
+      </div>
+      <button class="btn-remove-step" title="Remove step">&#128465;</button>
+    </div>
+  </template>
+
+  <!-- Scenario card template -->
+  <template id="scenario-template">
+    <section class="card scenario-card">
+      <div class="scenario-header">
+        <label class="card-label">Scenario</label>
+        <button class="btn-remove-scenario" title="Remove scenario">&#128465;</button>
+      </div>
+      <input type="text" class="scenario-name field" placeholder="e.g. Successful login">
+      <div class="steps-list"></div>
+      <button class="btn-add-step btn-add-small">+ Add Step</button>
+    </section>
+  </template>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

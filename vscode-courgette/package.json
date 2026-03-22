@@ -1,0 +1,92 @@
+{
+  "name": "courgette",
+  "displayName": "Courgette BDD",
+  "description": "Gherkin syntax highlighting and step definition navigation for the Courgette BDD framework",
+  "version": "0.1.0",
+  "publisher": "mahdilamb",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Testing"
+  ],
+  "activationEvents": [
+    "onLanguage:gherkin"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "gherkin",
+        "aliases": [
+          "Gherkin",
+          "Feature",
+          "Cucumber"
+        ],
+        "extensions": [
+          ".feature"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "gherkin",
+        "scopeName": "source.gherkin",
+        "path": "./syntaxes/gherkin.tmLanguage.json"
+      }
+    ],
+    "configurationDefaults": {
+      "[gherkin]": {
+        "editor.semanticHighlighting.enabled": false
+      }
+    },
+    "configuration": {
+      "title": "Courgette",
+      "properties": {
+        "courgette.steps.globs": {
+          "type": "array",
+          "default": [
+            "**/step_*.py",
+            "**/*_steps.py",
+            "**/steps/**/*.py"
+          ],
+          "description": "Glob patterns to find step definition files"
+        },
+        "courgette.python.command": {
+          "type": "string",
+          "default": "",
+          "description": "Command to run pytest (e.g. 'uv run', 'python3 -m', '/path/to/venv/bin/python -m'). Leave empty for auto-detection."
+        },
+        "courgette.steps.decorators": {
+          "type": "array",
+          "default": [
+            "given",
+            "when",
+            "then",
+            "step"
+          ],
+          "description": "Decorator names used for step definitions"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "install-extension": "npm run compile && ln -sfn \"$PWD\" \"${HOME}/.vscode/extensions/mahdilamb.courgette\"",
+    "uninstall-extension": "rm -f \"${HOME}/.vscode/extensions/mahdilamb.courgette\"",
+    "package": "npx @vscode/vsce package"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.80.0",
+    "@types/node": "^18.0.0",
+    "typescript": "^5.3.0",
+    "vitest": "^3.0.0"
+  }
+}
