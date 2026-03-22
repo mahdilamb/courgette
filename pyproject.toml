@@ -1,0 +1,65 @@
+[project]
+name = "courgette"
+version = "0.1.0"
+description = "A modern Python BDD framework with full Gherkin support and pytest integration"
+readme = "README.md"
+authors = [{ name = "Mahdi Lamb", email = "mahdilamb@gmail.com" }]
+requires-python = ">=3.11"
+license = "MIT"
+classifiers = [
+    "Framework :: Pytest",
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Topic :: Software Development :: Testing :: BDD",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
+dependencies = []
+
+[project.optional-dependencies]
+color = ["colorama>=0.4"]
+dev = ["pytest>=8", "mypy", "ruff", "playwright", "pytest-playwright"]
+ui = ["courgette-ui"]
+
+[project.scripts]
+courgette = "courgette.cli:main"
+
+[project.entry-points.pytest11]
+courgette = "courgette.plugin"
+
+[build-system]
+requires = ["uv_build>=0.10.9,<0.11.0"]
+build-backend = "uv_build"
+
+
+[tool.courgette]
+features = ["features", "tests/features"]
+steps = ["steps", "tests/steps"]
+language = "en"
+tags = ""
+color = "auto"
+junit_xml = ""
+strict = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+filterwarnings = ["ignore::pytest.PytestUnknownMarkWarning"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+
+[tool.ruff]
+target-version = "py311"
+
+[tool.semantic_release]
+version_toml = ["pyproject.toml:project.version"]
+branch = "main"
+build_command = "pip install uv && uv build"
+
+[tool.uv.sources]
+courgette-ui = { workspace = true }
+
+[tool.uv.workspace]
+members = ["packages/*"]

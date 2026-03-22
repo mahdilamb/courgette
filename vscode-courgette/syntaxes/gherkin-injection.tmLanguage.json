@@ -1,0 +1,17 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Gherkin in Python Strings",
+  "scopeName": "source.gherkin.injection",
+  "injectionSelector": "L:source.python",
+  "patterns": [
+    {
+      "begin": "(\"\"\"|('''))(?=.*(?:Feature|Scenario|Given|When|Then|Background|Rule|Examples))",
+      "end": "\\1",
+      "name": "meta.embedded.gherkin",
+      "contentName": "source.gherkin",
+      "patterns": [
+        { "include": "source.gherkin" }
+      ]
+    }
+  ]
+}

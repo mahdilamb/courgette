@@ -1,0 +1,58 @@
+/* Courgette design tokens — shared between light and dark mode */
+
+:root {
+  --bg: #ffffff;
+  --bg-card: #f8faf6;
+  --bg-input: #ffffff;
+  --surface: #f2f5ef;
+  --border: #d0dac6;
+  --border-focus: #4a9e2e;
+  --text: #1a2316;
+  --text-dim: #5a7048;
+  --text-muted: #8a9e7e;
+  --accent: #4a9e2e;
+  --accent-light: #6abf4b;
+  --accent-dark: #2d6a18;
+  --keyword: #2d6a18;
+  --param: #1a7fa0;
+  --error: #cc3333;
+  --error-bg: #fff0f0;
+  --success: #2d8a18;
+  --scenario-border: #4a9e2e;
+  --dropdown-bg: #ffffff;
+  --dropdown-hover: #f0f5eb;
+  --btn-primary-bg: #4a9e2e;
+  --btn-primary-text: #ffffff;
+  --btn-secondary-bg: #e8ede4;
+  --btn-secondary-text: #1a2316;
+  --mono: "SF Mono", "Cascadia Code", "Fira Code", "Menlo", monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #111a0d;
+    --bg-card: #1a2514;
+    --bg-input: #0e150a;
+    --surface: #1f2e17;
+    --border: #3a5a2a;
+    --border-focus: #7dd35a;
+    --text: #e8f0e0;
+    --text-dim: #a0b890;
+    --text-muted: #6a8858;
+    --accent: #7dd35a;
+    --accent-light: #a0e880;
+    --accent-dark: #4a9e2e;
+    --keyword: #c8e8b0;
+    --param: #88d8f8;
+    --error: #f06060;
+    --error-bg: #2a1515;
+    --success: #7dd35a;
+    --scenario-border: #5aaa38;
+    --dropdown-bg: #1a2514;
+    --dropdown-hover: #2a3d1e;
+    --btn-primary-bg: #7dd35a;
+    --btn-primary-text: #0a1206;
+    --btn-secondary-bg: #2a3d1e;
+    --btn-secondary-text: #e8f0e0;
+  }
+}
