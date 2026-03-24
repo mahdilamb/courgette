@@ -166,13 +166,17 @@ courgette-ui
 ```
 
 Opens a browser-based feature builder with:
-- Step autocomplete from registered definitions
+- Step autocomplete from registered definitions with trie-based search
 - Live validation with context flow analysis
-- Inline test results with swim lane indicators
-- Data table and Scenario Outline editing
-- Feature library browser and step reference panel
+- Inline test results with marker pane indicators
+- Data table and Scenario Outline editing with per-row status dots
+- Feature library browser with draft management (create, edit, delete)
 - Tag editing with suggestions
-- Drag-and-drop step reordering
+- Drag-and-drop step and scenario reordering
+- Rule grouping — select scenarios to create Rules
+- Folder-level run suite modal with test selection and parallel execution
+- i18n support — localized keywords with canonical English values
+- Background section — add/remove as needed
 - Behave step discovery
 
 ## VSCode extension

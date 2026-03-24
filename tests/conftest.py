@@ -5,11 +5,11 @@ The `shared_logger` fixture is injected into both hooks and steps.
 """
 
 from __future__ import annotations
+from typing import Generator
 
 import pytest
 
 from courgette import before_scenario, after_scenario
-
 
 
 class SharedLogger:
@@ -23,13 +23,13 @@ class SharedLogger:
 
 
 @pytest.fixture
-def shared_logger() -> SharedLogger:
+def shared_logger() -> Generator[SharedLogger]:
     """A pytest fixture that provides a shared logger instance.
 
     This fixture is injected into both hooks and step definitions,
     demonstrating that courgette hooks support pytest fixtures.
     """
-    return SharedLogger()
+    yield SharedLogger()
 
 
 # --- Hooks that use the pytest fixture ---

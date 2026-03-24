@@ -1,7 +1,7 @@
 {
   "name": "courgette",
   "displayName": "Courgette BDD",
-  "description": "Gherkin syntax highlighting and step definition navigation for the Courgette BDD framework",
+  "description": "Gherkin syntax highlighting, test runner, param-level go-to-definition, and rainbow parameters for the Courgette BDD framework",
   "version": "0.1.0",
   "publisher": "mahdilamb",
   "license": "MIT",
@@ -20,14 +20,8 @@
     "languages": [
       {
         "id": "gherkin",
-        "aliases": [
-          "Gherkin",
-          "Feature",
-          "Cucumber"
-        ],
-        "extensions": [
-          ".feature"
-        ],
+        "aliases": ["Gherkin", "Feature", "Cucumber"],
+        "extensions": [".feature"],
         "configuration": "./language-configuration.json"
       }
     ],
@@ -36,6 +30,54 @@
         "language": "gherkin",
         "scopeName": "source.gherkin",
         "path": "./syntaxes/gherkin.tmLanguage.json"
+      },
+      {
+        "scopeName": "gherkin.json.injection",
+        "path": "./syntaxes/gherkin-json.injection.json",
+        "injectTo": ["source.gherkin"],
+        "embeddedLanguages": { "meta.embedded.block.json": "json" }
+      },
+      {
+        "scopeName": "gherkin.python.injection",
+        "path": "./syntaxes/gherkin-python.injection.json",
+        "injectTo": ["source.gherkin"],
+        "embeddedLanguages": { "meta.embedded.block.python": "python" }
+      },
+      {
+        "scopeName": "gherkin.yaml.injection",
+        "path": "./syntaxes/gherkin-yaml.injection.json",
+        "injectTo": ["source.gherkin"],
+        "embeddedLanguages": { "meta.embedded.block.yaml": "yaml" }
+      },
+      {
+        "scopeName": "gherkin.xml.injection",
+        "path": "./syntaxes/gherkin-xml.injection.json",
+        "injectTo": ["source.gherkin"],
+        "embeddedLanguages": { "meta.embedded.block.xml": "xml" }
+      },
+      {
+        "scopeName": "gherkin.javascript.injection",
+        "path": "./syntaxes/gherkin-javascript.injection.json",
+        "injectTo": ["source.gherkin"],
+        "embeddedLanguages": { "meta.embedded.block.javascript": "javascript" }
+      },
+      {
+        "scopeName": "gherkin.sql.injection",
+        "path": "./syntaxes/gherkin-sql.injection.json",
+        "injectTo": ["source.gherkin"],
+        "embeddedLanguages": { "meta.embedded.block.sql": "sql" }
+      },
+      {
+        "scopeName": "gherkin.css.injection",
+        "path": "./syntaxes/gherkin-css.injection.json",
+        "injectTo": ["source.gherkin"],
+        "embeddedLanguages": { "meta.embedded.block.css": "css" }
+      },
+      {
+        "scopeName": "gherkin.markdown.injection",
+        "path": "./syntaxes/gherkin-markdown.injection.json",
+        "injectTo": ["source.gherkin"],
+        "embeddedLanguages": { "meta.embedded.block.markdown": "markdown" }
       }
     ],
     "configurationDefaults": {
@@ -79,8 +121,8 @@
     "watch": "tsc -watch -p ./",
     "test": "vitest run",
     "test:watch": "vitest",
-    "install-extension": "npm run compile && ln -sfn \"$PWD\" \"${HOME}/.vscode/extensions/mahdilamb.courgette\"",
-    "uninstall-extension": "rm -f \"${HOME}/.vscode/extensions/mahdilamb.courgette\"",
+    "install-extension": "npm run compile && rm -rf \"${HOME}/.vscode/extensions/mahdilamb.courgette-0.1.0\" && mkdir -p \"${HOME}/.vscode/extensions/mahdilamb.courgette-0.1.0\" && cp package.json language-configuration.json \"${HOME}/.vscode/extensions/mahdilamb.courgette-0.1.0/\" && cp -r syntaxes out \"${HOME}/.vscode/extensions/mahdilamb.courgette-0.1.0/\"",
+    "uninstall-extension": "rm -rf \"${HOME}/.vscode/extensions/mahdilamb.courgette-0.1.0\"",
     "package": "npx @vscode/vsce package"
   },
   "devDependencies": {

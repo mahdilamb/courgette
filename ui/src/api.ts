@@ -41,6 +41,37 @@ export async function runFeature(
   return resp.json();
 }
 
+export async function runFeatureFile(
+  path: string
+): Promise<RunResult> {
+  const resp = await fetch(`${BASE}/api/run-file`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ path }),
+  });
+  return resp.json();
+}
+
+export async function searchSteps(
+  query: string,
+  keyword: string,
+  outline = false
+): Promise<{ results: StepDefinition[] }> {
+  const resp = await fetch(`${BASE}/api/search`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ query, keyword, outline }),
+  });
+  return resp.json();
+}
+
+export async function fetchKeywords(
+  lang: string
+): Promise<Record<string, string>> {
+  const resp = await fetch(`${BASE}/api/keywords/${lang}`);
+  return resp.json();
+}
+
 export async function saveFeature(
   content: string,
   filename: string

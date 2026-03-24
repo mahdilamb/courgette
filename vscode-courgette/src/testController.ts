@@ -1,4 +1,5 @@
 import * as vscode from "vscode";
+import { StepDefinitionProvider } from "./stepDefinitionProvider";
 
 /**
  * Regex patterns for parsing .feature files into test items.
@@ -125,7 +126,6 @@ export class CourgetteTestController implements vscode.Disposable {
         const id = relativePath;
         featureItem = this.ctrl.createTestItem(id, name, uri);
         featureItem.range = new vscode.Range(i, 0, i, line.length);
-        featureItem.canResolveChildren = false;
         this.ctrl.items.delete(id);
         this.ctrl.items.add(featureItem);
         ruleItem = undefined;
@@ -173,9 +173,14 @@ export class CourgetteTestController implements vscode.Disposable {
   ) {
     const run = this.ctrl.createTestRun(request);
     const items = this.collectItems(request);
-    const isTargeted = !!request.include && request.include.length > 0;
+    const parents = this.collectParents(request);
 
-    // Group items by feature file
+    // Mark parent items as started
+    for (const parent of parents) {
+      run.started(parent);
+    }
+
+    // Group leaf items by feature file
     const byFile = new Map<string, vscode.TestItem[]>();
     for (const item of items) {
       const uri = item.uri?.fsPath;
@@ -184,6 +189,10 @@ export class CourgetteTestController implements vscode.Disposable {
       byFile.get(uri)!.push(item);
     }
 
+    // Track overall status for parent items
+    let anyFailed = false;
+    let anyErrored = false;
+
     for (const [filePath, fileItems] of byFile) {
       if (token.isCancellationRequested) break;
 
@@ -191,15 +200,7 @@ export class CourgetteTestController implements vscode.Disposable {
         run.started(item);
       }
 
-      // When the user clicked specific scenarios, pass each as a
-      // pytest node ID: "path/file.feature::Scenario Name"
-      // This avoids -k expression parsing issues with spaces/special chars
       const args = ["pytest", "-v", "--tb=short"];
-
-      // Always run the whole file. For targeted runs, we match results
-      // back to the selected items. This handles Scenario Outlines that
-      // expand into "Name [param=val]" variants which can't be targeted
-      // by exact node ID from the unexpanded name.
       args.push(filePath);
 
       try {
@@ -210,8 +211,11 @@ export class CourgetteTestController implements vscode.Disposable {
           run.appendOutput(fullOutput.replace(/\n/g, "\r\n") + "\r\n");
         }
 
-        this.parseResults(fullOutput, fileItems, run, code);
+        const { hadFailure } = this.parseResults(fullOutput, fileItems, run, code);
+        if (hadFailure) anyFailed = true;
+        if (code >= 2) anyErrored = true;
       } catch (err) {
+        anyErrored = true;
         const errMsg = `Failed to run: ${err}`;
         run.appendOutput(errMsg.replace(/\n/g, "\r\n") + "\r\n");
         for (const item of fileItems) {
@@ -220,28 +224,63 @@ export class CourgetteTestController implements vscode.Disposable {
       }
     }
 
+    // Report parent item status based on children
+    for (const parent of parents) {
+      if (anyErrored) {
+        run.errored(parent, new vscode.TestMessage("One or more child tests errored"));
+      } else if (anyFailed) {
+        run.failed(parent, new vscode.TestMessage("One or more child tests failed"));
+      } else {
+        run.passed(parent);
+      }
+    }
+
     run.end();
   }
 
+  /**
+   * Collect leaf scenario items to run. For parent items (Feature/Rule),
+   * recursively collect all child scenarios.
+   */
   private collectItems(request: vscode.TestRunRequest): vscode.TestItem[] {
     const items: vscode.TestItem[] = [];
     if (request.include) {
       for (const item of request.include) {
-        this.collectRecursive(item, items);
+        this.collectLeaves(item, items);
       }
     } else {
       this.ctrl.items.forEach((item) => {
-        this.collectRecursive(item, items);
+        this.collectLeaves(item, items);
       });
     }
     return items;
   }
 
-  private collectRecursive(item: vscode.TestItem, into: vscode.TestItem[]) {
+  /**
+   * Collect all parent items (Feature/Rule) that were explicitly selected,
+   * so their status can be updated after all children complete.
+   */
+  private collectParents(request: vscode.TestRunRequest): vscode.TestItem[] {
+    const parents: vscode.TestItem[] = [];
+    if (request.include) {
+      for (const item of request.include) {
+        if (item.children.size > 0) {
+          parents.push(item);
+          // Also collect nested parents (Rules inside Features)
+          item.children.forEach((child) => {
+            if (child.children.size > 0) parents.push(child);
+          });
+        }
+      }
+    }
+    return parents;
+  }
+
+  private collectLeaves(item: vscode.TestItem, into: vscode.TestItem[]) {
     if (item.children.size === 0) {
       into.push(item);
     } else {
-      item.children.forEach((child) => this.collectRecursive(child, into));
+      item.children.forEach((child) => this.collectLeaves(child, into));
     }
   }
 
@@ -291,6 +330,14 @@ export class CourgetteTestController implements vscode.Disposable {
     return new Promise((resolve, reject) => {
       const { spawn } =
         require("child_process") as typeof import("child_process");
+
+      // Log the exact command for debugging
+      const debug = StepDefinitionProvider._debug;
+      if (debug) {
+        debug.appendLine(`[Courgette] cwd: ${cwd}`);
+        debug.appendLine(`[Courgette] cmd: ${cmd} ${cmdArgs.join(" ")}`);
+      }
+
       const proc = spawn(cmd, cmdArgs, {
         cwd,
         env: { ...process.env },
@@ -324,7 +371,7 @@ export class CourgetteTestController implements vscode.Disposable {
     items: vscode.TestItem[],
     run: vscode.TestRun,
     exitCode: number
-  ) {
+  ): { hadFailure: boolean } {
     const lines = output.split("\n");
 
     const itemByName = new Map<string, vscode.TestItem>();
@@ -396,6 +443,9 @@ export class CourgetteTestController implements vscode.Disposable {
         run.skipped(item);
       }
     }
+
+    const hadFailure = [...itemStatus.values()].some((s) => s === "failed");
+    return { hadFailure };
   }
 
   private collectFailureOutput(

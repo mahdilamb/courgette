@@ -1,0 +1,264 @@
+/* --- Collapsed view --- */
+
+.datatable-collapsed {
+  margin-left: calc(var(--keyword-width) + 1px);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-input);
+  cursor: text;
+  transition: border-color 0.15s;
+  overflow-x: auto;
+}
+
+.datatable-collapsed:hover {
+  border-color: var(--border-focus);
+  border-style: solid;
+}
+
+.datatable-placeholder {
+  display: block;
+  padding: 8px 12px;
+  color: var(--text-placeholder);
+  font-style: italic;
+  font-size: 13px;
+}
+
+/* --- Editing view --- */
+
+.datatable-editing {
+  margin-left: calc(var(--keyword-width) + 1px);
+  border: 1px solid var(--border-focus);
+  border-radius: var(--radius);
+  background: var(--bg-input);
+  overflow: hidden;
+}
+
+.datatable-header-bar {
+  display: flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-secondary);
+}
+
+.datatable-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+/* Grid: table | +col / +row | corner */
+
+.datatable-grid {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-rows: 1fr auto;
+  grid-template-areas:
+    "table  addcol"
+    "addrow corner";
+}
+
+.datatable-scroll {
+  grid-area: table;
+  overflow-x: auto;
+}
+
+/* --- Shared table styles --- */
+
+.datatable-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.datatable-table th,
+.datatable-table td {
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  transition: background 0.15s, opacity 0.15s;
+}
+
+/* Compact (collapsed) */
+
+.datatable-table--compact th {
+  padding: 4px 10px;
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--text-secondary);
+  background: var(--bg-tertiary);
+}
+
+.datatable-table--compact td {
+  padding: 3px 10px;
+  color: var(--text-primary);
+  font-family: ui-monospace, "SF Mono", Consolas, monospace;
+  font-size: 12px;
+}
+
+.datatable-table--compact tr:last-child td {
+  border-bottom: none;
+}
+
+.datatable-empty {
+  color: var(--text-placeholder);
+  font-style: italic;
+}
+
+/* Editing table */
+
+.datatable-table--edit th {
+  padding: 0;
+  background: var(--bg-tertiary);
+}
+
+.datatable-table--edit td {
+  padding: 0;
+}
+
+.datatable-header-cell {
+  display: flex;
+  align-items: center;
+}
+
+.datatable-input {
+  width: 100%;
+  padding: 6px 8px;
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 13px;
+  outline: none;
+  font-family: ui-monospace, "SF Mono", Consolas, monospace;
+}
+
+.datatable-input:focus {
+  background: var(--bg-hover);
+}
+
+.datatable-input--header {
+  font-weight: 600;
+  font-family: system-ui, -apple-system, sans-serif;
+  color: var(--text-secondary);
+}
+
+.datatable-input::placeholder {
+  color: var(--text-placeholder);
+}
+
+/* --- Delete hover effect --- */
+
+.datatable-deleting {
+  background: var(--error-bg) !important;
+}
+
+.datatable-deleting .datatable-input {
+  text-decoration: line-through;
+  opacity: 0.5;
+}
+
+/* Remove column button */
+
+.datatable-remove-col {
+  flex-shrink: 0;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 14px;
+  cursor: pointer;
+  padding: 0 6px;
+  opacity: 0;
+  transition: opacity 0.15s, color 0.15s;
+}
+
+.datatable-header-cell:hover .datatable-remove-col {
+  opacity: 1;
+}
+
+.datatable-remove-col:hover {
+  color: var(--status-fail);
+}
+
+/* Cell wrap — positions the row delete button overlapping the last cell */
+
+.datatable-cell-wrap {
+  display: flex;
+  align-items: center;
+  position: relative;
+}
+
+.datatable-cell-wrap .datatable-input {
+  flex: 1;
+}
+
+.datatable-remove-row {
+  position: absolute;
+  right: 2px;
+  border: none;
+  background: var(--bg-input);
+  color: var(--text-muted);
+  font-size: 14px;
+  cursor: pointer;
+  padding: 0 4px;
+  opacity: 0;
+  transition: opacity 0.15s, color 0.15s;
+  border-radius: var(--radius);
+}
+
+tr:hover .datatable-remove-row {
+  opacity: 1;
+}
+
+.datatable-remove-row:hover {
+  color: var(--status-fail);
+  background: var(--error-bg);
+}
+
+/* --- Add column (right side) --- */
+
+.datatable-add-col-side {
+  grid-area: addcol;
+  border: none;
+  border-left: 1px dashed var(--border);
+  background: var(--bg-tertiary);
+  color: var(--text-placeholder);
+  font-size: 11px;
+  cursor: pointer;
+  padding: 0 8px;
+  white-space: nowrap;
+  transition: background 0.15s, color 0.15s;
+}
+
+.datatable-add-col-side:hover {
+  background: var(--bg-hover);
+  color: var(--text-secondary);
+}
+
+/* --- Add row (bottom) --- */
+
+.datatable-add-row {
+  grid-area: addrow;
+  padding: 4px;
+  border: none;
+  border-top: 1px dashed var(--border);
+  background: var(--bg-tertiary);
+  color: var(--text-placeholder);
+  font-size: 11px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.datatable-add-row:hover {
+  background: var(--bg-hover);
+  color: var(--text-secondary);
+}
+
+/* --- Dead corner --- */
+
+.datatable-corner {
+  grid-area: corner;
+  background: var(--bg-tertiary);
+  border-left: 1px dashed var(--border);
+  border-top: 1px dashed var(--border);
+}

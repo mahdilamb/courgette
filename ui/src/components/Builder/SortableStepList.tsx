@@ -11,15 +11,19 @@ interface SortableStepListProps {
   allStepDefs: { context_writes?: string[] }[];
   priorWritesFn: (idx: number) => string[];
   onStepFocus?: (stepId: string, keyword: string, text: string) => void;
+  onStepBlur?: () => void;
   examples?: { headers: string[]; rows: string[][] };
+  stepResults?: Array<{ status: string } | null>;
 }
 
-function SortableStepItem({ scenarioId, step, priorWrites, onStepFocus, examples }: {
+function SortableStepItem({ scenarioId, step, priorWrites, onStepFocus, onStepBlur, examples, runStatus }: {
   scenarioId: string | null;
   step: BuilderStep;
   priorWrites: string[];
   onStepFocus?: (keyword: string, text: string) => void;
+  onStepBlur?: () => void;
   examples?: { headers: string[]; rows: string[][] };
+  runStatus?: "passed" | "failed" | "skipped" | "undefined" | null;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: step.id });
   const style = {
@@ -30,23 +34,23 @@ function SortableStepItem({ scenarioId, step, priorWrites, onStepFocus, examples
 
   return (
     <div ref={setNodeRef} style={style}>
-      <div style={{ display: "flex", alignItems: "center" }}>
+      <div style={{ display: "flex", alignItems: "flex-start" }}>
         <span
           {...attributes}
           {...listeners}
-          style={{ cursor: "grab", color: "var(--text-muted)", fontSize: "0.9rem", userSelect: "none", letterSpacing: "-3px", padding: "0 4px" }}
+          style={{ cursor: "grab", color: "var(--border)", fontSize: "0.75rem", userSelect: "none", letterSpacing: "-2px", padding: "0.45rem 2px 0 0", flexShrink: 0, lineHeight: 1 }}
         >
           &#8942;&#8942;
         </span>
         <div style={{ flex: 1 }}>
-          <StepRow scenarioId={scenarioId} stepId={step.id} keyword={step.keyword} text={step.text} priorContextWrites={priorWrites} onStepFocus={onStepFocus} examples={examples} dataTable={step.data_table} />
+          <StepRow scenarioId={scenarioId} stepId={step.id} keyword={step.keyword} text={step.text} priorContextWrites={priorWrites} onStepFocus={onStepFocus} onStepBlur={onStepBlur} examples={examples} dataTable={step.data_table} docString={step.doc_string} runStatus={runStatus} />
         </div>
       </div>
     </div>
   );
 }
 
-export function SortableStepList({ scenarioId, steps, priorWritesFn, onStepFocus, examples }: SortableStepListProps) {
+export function SortableStepList({ scenarioId, steps, priorWritesFn, onStepFocus, onStepBlur, examples, stepResults }: SortableStepListProps) {
   const dispatch = useDispatch();
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -89,7 +93,9 @@ export function SortableStepList({ scenarioId, steps, priorWritesFn, onStepFocus
             step={step}
             priorWrites={priorWritesFn(idx)}
             onStepFocus={(kw, txt) => onStepFocus?.(step.id, kw, txt)}
+            onStepBlur={onStepBlur}
             examples={examples}
+            runStatus={stepResults?.[idx]?.status as "passed" | "failed" | "skipped" | "undefined" | undefined}
           />
         ))}
       </SortableContext>

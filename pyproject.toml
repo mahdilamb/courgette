@@ -42,6 +42,9 @@ color = "auto"
 junit_xml = ""
 strict = false
 
+[tool.courgette.ui]
+auto-open = false
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 filterwarnings = ["ignore::pytest.PytestUnknownMarkWarning"]
@@ -63,3 +66,8 @@ courgette-ui = { workspace = true }
 
 [tool.uv.workspace]
 members = ["packages/*"]
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+]

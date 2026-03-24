@@ -89,6 +89,7 @@
       "name": "meta.table.gherkin"
     },
     "docstring": {
+      "comment": "Plain doc strings only — embedded languages handled by injection grammars",
       "patterns": [
         {
           "begin": "^\\s*(\"\"\")(.*)$",
@@ -98,9 +99,7 @@
             "1": { "name": "punctuation.definition.string.begin.gherkin" },
             "2": { "name": "entity.name.type.media-type.gherkin" }
           },
-          "endCaptures": {
-            "0": { "name": "punctuation.definition.string.end.gherkin" }
-          }
+          "endCaptures": { "0": { "name": "punctuation.definition.string.end.gherkin" } }
         },
         {
           "begin": "^\\s*(```)(.*)$",
@@ -110,9 +109,7 @@
             "1": { "name": "punctuation.definition.string.begin.gherkin" },
             "2": { "name": "entity.name.type.media-type.gherkin" }
           },
-          "endCaptures": {
-            "0": { "name": "punctuation.definition.string.end.gherkin" }
-          }
+          "endCaptures": { "0": { "name": "punctuation.definition.string.end.gherkin" } }
         }
       ]
     },
