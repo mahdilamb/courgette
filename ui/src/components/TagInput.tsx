@@ -1,141 +1,126 @@
-import { useState, useRef } from "react";
+/**
+ * TagInput — chip-based tag editor with dropdown for adding from suggestions.
+ *
+ * - Each tag is a pill with × to remove
+ * - Tag icon on the right opens a dropdown of available tags not yet added
+ * - Type to filter or press Enter to create a new tag
+ */
 
-interface TagInputProps {
+import { useState, useRef, useEffect } from "react";
+import "./TagInput.css";
+
+export interface TagInputProps {
+  /** Current tags (including @). */
   tags: string[];
-  onChange: (tags: string[]) => void;
-  suggestions?: string[];
+  /** All available tags for suggestions. */
+  availableTags?: string[];
+  /** Called when tags change. */
+  onChange?: (tags: string[]) => void;
 }
 
-export function TagInput({ tags, onChange, suggestions = [] }: TagInputProps) {
-  const [input, setInput] = useState("");
-  const [showSuggestions, setShowSuggestions] = useState(false);
+export function TagInput({ tags, availableTags = [], onChange }: TagInputProps) {
+  const [open, setOpen] = useState(false);
+  const [filter, setFilter] = useState("");
+  const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const addTag = (tag: string) => {
-    const t = tag.trim().replace(/^@/, "");
-    if (t && !tags.includes(t)) {
-      onChange([...tags, t]);
-    }
-    setInput("");
-    setShowSuggestions(false);
-    inputRef.current?.focus();
-  };
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+        setFilter("");
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  useEffect(() => {
+    if (open) inputRef.current?.focus();
+  }, [open]);
 
   const removeTag = (tag: string) => {
-    onChange(tags.filter((t) => t !== tag));
+    onChange?.(tags.filter((t) => t !== tag));
+  };
+
+  const addTag = (tag: string) => {
+    const normalized = tag.startsWith("@") ? tag.trim() : `@${tag.trim()}`;
+    if (normalized.length > 1 && !tags.includes(normalized)) {
+      onChange?.([...tags, normalized]);
+    }
+    setFilter("");
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" || e.key === "," || e.key === "Tab") {
+    if (e.key === "Enter" && filter.trim()) {
       e.preventDefault();
-      if (input.trim()) addTag(input);
-    } else if (e.key === "Backspace" && !input && tags.length > 0) {
-      removeTag(tags[tags.length - 1]);
+      addTag(filter);
+    }
+    if (e.key === "Escape") {
+      setOpen(false);
+      setFilter("");
     }
   };
 
-  const filtered = suggestions.filter(
-    (s) => !tags.includes(s) && s.toLowerCase().includes(input.toLowerCase())
+  const suggestions = availableTags.filter(
+    (t) => !tags.includes(t) && t.toLowerCase().includes(filter.toLowerCase())
   );
 
   return (
-    <div style={{ position: "relative" }}>
-      <div
-        style={{
-          display: "flex",
-          flexWrap: "wrap",
-          gap: "0.25rem",
-          padding: "0.35rem",
-          border: "1px solid var(--border)",
-          borderRadius: "4px",
-          background: "var(--bg-input)",
-          minHeight: "2rem",
-          alignItems: "center",
-        }}
-        onClick={() => inputRef.current?.focus()}
-      >
-        {tags.map((tag) => (
-          <span
-            key={tag}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "0.2rem",
-              padding: "0.15rem 0.5rem",
-              background: "var(--accent)",
-              color: "var(--btn-primary-text)",
-              borderRadius: "12px",
-              fontSize: "0.75rem",
-              fontWeight: 600,
-            }}
+    <div ref={containerRef} className="tag-input">
+      {tags.map((tag) => (
+        <span key={tag} className="tag-chip">
+          {tag}
+          <button
+            className="tag-chip-x"
+            onClick={() => removeTag(tag)}
+            aria-label={`Remove ${tag}`}
           >
-            @{tag}
-            <button
-              onClick={(e) => { e.stopPropagation(); removeTag(tag); }}
-              style={{
-                background: "none",
-                border: "none",
-                color: "inherit",
-                cursor: "pointer",
-                fontSize: "0.8rem",
-                padding: 0,
-                lineHeight: 1,
-              }}
-            >
-              &times;
-            </button>
-          </span>
-        ))}
-        <input
-          ref={inputRef}
-          value={input}
-          onChange={(e) => { setInput(e.target.value); setShowSuggestions(true); }}
-          onKeyDown={handleKeyDown}
-          onFocus={() => setShowSuggestions(true)}
-          onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
-          placeholder={tags.length === 0 ? "Add tags..." : ""}
-          style={{
-            border: "none",
-            outline: "none",
-            background: "transparent",
-            color: "var(--text)",
-            fontSize: "0.8rem",
-            flex: 1,
-            minWidth: "60px",
-          }}
-        />
-      </div>
-      {showSuggestions && filtered.length > 0 && (
-        <div
-          style={{
-            position: "absolute",
-            top: "100%",
-            left: 0,
-            right: 0,
-            background: "var(--dropdown-bg)",
-            border: "1px solid var(--border)",
-            borderRadius: "4px",
-            zIndex: 10,
-            maxHeight: "150px",
-            overflowY: "auto",
-          }}
-        >
-          {filtered.map((s) => (
-            <div
-              key={s}
-              onMouseDown={(e) => { e.preventDefault(); addTag(s); }}
-              style={{
-                padding: "0.35rem 0.75rem",
-                cursor: "pointer",
-                fontSize: "0.8rem",
-                color: "var(--text)",
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = "var(--dropdown-hover)")}
-              onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
-            >
-              @{s}
+            ×
+          </button>
+        </span>
+      ))}
+
+      <button
+        className={`tag-btn ${open ? "tag-btn--active" : ""}`}
+        onClick={() => setOpen(!open)}
+        title="Add tag"
+        aria-label="Add tag"
+        aria-expanded={open}
+      >
+        🏷 @
+      </button>
+
+      {open && (
+        <div className="tag-dropdown">
+          <input
+            ref={inputRef}
+            type="text"
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="filter or type new..."
+            className="tag-dropdown-filter"
+          />
+          {suggestions.length > 0 && (
+            <div className="tag-dropdown-list">
+              {suggestions.map((tag) => (
+                <button
+                  key={tag}
+                  className="tag-dropdown-item"
+                  onClick={() => addTag(tag)}
+                >
+                  {tag}
+                </button>
+              ))}
             </div>
-          ))}
+          )}
+          {filter.trim() && !tags.includes(filter.startsWith("@") ? filter : `@${filter}`) && (
+            <div className="tag-dropdown-hint">
+              Enter to add <strong>{filter.startsWith("@") ? filter : `@${filter}`}</strong>
+            </div>
+          )}
         </div>
       )}
     </div>

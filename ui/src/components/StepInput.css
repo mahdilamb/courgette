@@ -1,0 +1,296 @@
+.step-input-container {
+  position: relative;
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 14px;
+}
+
+/* --- Main row --- */
+
+.step-input-row {
+  display: flex;
+  align-items: stretch;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--bg-input);
+  transition: border-color 0.2s, opacity 0.2s;
+}
+
+.step-input-row:focus-within {
+  border-color: var(--border-focus);
+}
+
+/* Fill mode border states */
+.step-input-row--partial {
+  border-color: var(--border);
+  opacity: 0.7;
+}
+
+.step-input-row--partial:focus-within {
+  border-color: var(--status-partial);
+  opacity: 0.85;
+}
+
+.step-input-row--error {
+  border-color: var(--status-fail);
+  opacity: 1;
+  background: var(--error-bg);
+}
+
+.step-input-row--error .step-input-keyword {
+  color: #fff;
+  background: var(--status-fail);
+  border-right-color: var(--status-fail);
+}
+
+.step-input-row--complete {
+  border-color: var(--status-pass);
+  opacity: 1;
+  background: var(--complete-bg);
+}
+
+.step-input-row--complete .step-input-keyword {
+  color: #fff;
+  background: var(--status-pass);
+  border-right-color: var(--status-pass);
+  /* Center: remove dropdown arrow, equalize padding */
+  background-image: none;
+  padding: 8px 16px;
+  pointer-events: none;
+  text-align: center;
+}
+
+/* --- Keyword dropdown --- */
+
+.step-input-keyword {
+  width: var(--keyword-width);
+  min-width: var(--keyword-width);
+  padding: 8px 28px 8px 12px;
+  border: none;
+  border-right: 1px solid var(--border);
+  background: var(--keyword-bg);
+  color: var(--keyword-color);
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  outline: none;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%237a8e6c' d='M3 5l3 3 3-3'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  transition: padding 0.25s, background-color 0.25s, color 0.25s, background-image 0.25s, border-right-color 0.25s;
+}
+
+/* --- Input field area --- */
+
+.step-input-field {
+  flex: 1;
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.step-input-text {
+  flex: 1;
+  padding: 8px 12px;
+  padding-right: 32px;
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 14px;
+  outline: none;
+  width: 100%;
+}
+
+.step-input-text::placeholder {
+  color: var(--text-muted);
+}
+
+/* When overlay is active, make the real text transparent so overlay shows through */
+.step-input-text--overlay {
+  color: transparent;
+  caret-color: var(--text-primary);
+}
+
+/* --- Fill mode overlay --- */
+
+.step-input-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 32px;
+  bottom: 0;
+  padding: 8px 12px;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  gap: 0;
+  white-space: pre;
+  overflow: hidden;
+  /* Must exactly match the input's computed font to avoid cursor drift */
+}
+
+.step-input-filled-literal {
+  color: var(--text-primary);
+}
+
+.step-input-ghost {
+  color: var(--text-muted, #999);
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.step-input-filled-param {
+  font-weight: inherit;
+  border-radius: 3px;
+  padding: 0;
+  border-bottom: 2px solid currentColor;
+  pointer-events: auto;
+  cursor: help;
+  position: relative;
+  transition: background 0.15s;
+}
+
+.step-input-filled-param:hover {
+  background: var(--param-bg);
+}
+
+.step-input-filled-param[data-idx="0"] { color: var(--rainbow-0); background: var(--rainbow-0-bg); }
+.step-input-filled-param[data-idx="1"] { color: var(--rainbow-1); background: var(--rainbow-1-bg); }
+.step-input-filled-param[data-idx="2"] { color: var(--rainbow-2); background: var(--rainbow-2-bg); }
+.step-input-filled-param[data-idx="3"] { color: var(--rainbow-3); background: var(--rainbow-3-bg); }
+.step-input-filled-param[data-idx="4"] { color: var(--rainbow-4); background: var(--rainbow-4-bg); }
+.step-input-filled-param[data-idx="5"] { color: var(--rainbow-5); background: var(--rainbow-5-bg); }
+
+/* --- Rainbow (Scenario Outline) --- */
+
+.step-input-rainbow-literal {
+  color: var(--text-primary);
+}
+.step-input-rainbow-param {
+  border-radius: 3px;
+  padding: 0 1px;
+  cursor: help;
+  border-bottom: 2px solid currentColor;
+  /* No font-weight change — keeps overlay aligned with input */
+}
+
+/* --- Template badge --- */
+
+.step-input-fill-badge {
+  position: absolute;
+  top: 1px;
+  right: 4px;
+  font-size: 10px;
+  color: var(--text-secondary);
+  pointer-events: none;
+  white-space: nowrap;
+  opacity: 0.8;
+}
+
+.step-input-badge-param {
+  font-style: italic;
+}
+
+.step-input-badge-param[data-idx="0"] { color: var(--rainbow-0); }
+.step-input-badge-param[data-idx="1"] { color: var(--rainbow-1); }
+.step-input-badge-param[data-idx="2"] { color: var(--rainbow-2); }
+.step-input-badge-param[data-idx="3"] { color: var(--rainbow-3); }
+.step-input-badge-param[data-idx="4"] { color: var(--rainbow-4); }
+.step-input-badge-param[data-idx="5"] { color: var(--rainbow-5); }
+
+.step-input-badge-param--active {
+  font-weight: 700;
+  font-style: normal;
+  text-decoration: underline;
+}
+
+/* --- Clear button --- */
+
+.step-input-clear {
+  padding: 0 10px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 18px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  transition: color 0.15s;
+}
+
+.step-input-clear:hover {
+  color: var(--text-primary);
+}
+
+/* --- Dropdown --- */
+
+.step-input-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: 4px;
+  background: var(--bg-dropdown);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  max-height: 280px;
+  overflow-y: auto;
+  z-index: 100;
+  box-shadow: var(--shadow-dropdown);
+}
+
+.step-input-option {
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.step-input-option:hover,
+.step-input-option--active {
+  background: var(--bg-hover);
+}
+
+.step-input-option-text {
+  display: flex;
+  gap: 2px;
+  color: var(--text-primary);
+}
+
+.step-input-param {
+  font-style: italic;
+  border-radius: 3px;
+  padding: 0 2px;
+  border: 1px solid transparent;
+  transition: border-color 0.15s;
+  cursor: help;
+}
+
+.step-input-param:hover {
+  border-color: currentColor;
+}
+
+.step-input-param[data-idx="0"] { color: var(--rainbow-0); background: var(--rainbow-0-bg); }
+.step-input-param[data-idx="1"] { color: var(--rainbow-1); background: var(--rainbow-1-bg); }
+.step-input-param[data-idx="2"] { color: var(--rainbow-2); background: var(--rainbow-2-bg); }
+.step-input-param[data-idx="3"] { color: var(--rainbow-3); background: var(--rainbow-3-bg); }
+.step-input-param[data-idx="4"] { color: var(--rainbow-4); background: var(--rainbow-4-bg); }
+.step-input-param[data-idx="5"] { color: var(--rainbow-5); background: var(--rainbow-5-bg); }
+
+.step-input-option-desc {
+  margin-top: 3px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+/* --- Outline validation error --- */
+
+.step-input-error {
+  font-size: 11px;
+  color: var(--error, #dc2626);
+  padding: 2px 12px 2px 90px; /* align with text input, past keyword */
+  margin-top: -2px;
+}

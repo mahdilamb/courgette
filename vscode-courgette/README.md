@@ -1,27 +1,70 @@
 # Courgette VSCode Extension
 
-Gherkin syntax highlighting, step definition navigation, and test integration for the Courgette BDD framework.
+Companion to [Cucumber Official](https://marketplace.visualstudio.com/items?itemName=CucumberOpen.cucumber-official) — adds test runner integration, param-level go-to-definition, and rainbow parameters for the Courgette BDD framework.
 
-## Features
+## What this extension adds
 
-- **Syntax highlighting** — Keywords, tags, placeholders, numbers, quoted strings, table headers with distinct colors
-- **Go to definition** — Cmd/Ctrl-click on a step to jump to the Python `@given`/`@when`/`@then` decorator. Clicking on a parameter value jumps to the corresponding `{placeholder}` or `(?P<group>)` in the pattern.
-- **Test integration** — Run scenarios from the Testing sidebar. Results appear inline with pass/fail status.
-- **Inline diagnostics** — Undefined steps show wavy underlines with warnings.
-- **Rainbow parameters** — Scenario Outline `<placeholder>` names, table headers, and column values share colors.
-- **Dark/light mode** — Programmatic decorations work in any theme.
+| Feature | Cucumber Official | Courgette |
+|---------|:-:|:-:|
+| Syntax highlighting | ✅ | — |
+| Step autocomplete | ✅ | — |
+| Go-to-definition (step → function) | ✅ | — |
+| Undefined step diagnostics | ✅ | — |
+| **Go-to-definition (param → capture group)** | — | ✅ |
+| **Test runner (Testing sidebar)** | — | ✅ |
+| **Rainbow Scenario Outline params** | — | ✅ |
+| **Number/string decorations in steps** | — | ✅ |
+| **Auto-sync pyproject.toml → Cucumber settings** | — | ✅ |
+
+## How it works
+
+### pyproject.toml auto-sync
+
+Courgette reads `[tool.courgette]` from your pyproject.toml and automatically configures Cucumber Official's `cucumber.features` and `cucumber.glue` settings:
+
+```toml
+[tool.courgette]
+features = ["features", "tests/features"]
+steps = ["steps", "tests/steps"]
+```
+
+Becomes:
+
+```json
+{
+  "cucumber.features": ["features/**/*.feature", "tests/features/**/*.feature"],
+  "cucumber.glue": ["steps/**/*.py", "tests/steps/**/*.py"]
+}
+```
+
+No manual `.vscode/settings.json` editing needed.
+
+### Param-level go-to-definition
+
+Cmd/Ctrl-click on a **value** in a step to jump directly to the corresponding capture group in the pattern:
+
+- Click `2024` in `Given today is 2024-03-15` → jumps to `(?P<year>` in the regex
+- Click `5` in `Given I have the number 5` → jumps to `{n:d}` in the parse pattern
+
+### Test integration
+
+Run scenarios from the Testing sidebar. Results appear inline with pass/fail status and output.
+
+### Rainbow parameters
+
+In Scenario Outline files, `<placeholder>` names, their matching table headers, and column values are colored with a consistent rainbow palette.
 
 ## Install
 
-### From source (development)
+Requires [Cucumber Official](https://marketplace.visualstudio.com/items?itemName=CucumberOpen.cucumber-official) (declared as a dependency, installed automatically).
+
+### From source
 
 ```bash
 cd vscode-courgette
 npm install
 npm run install-extension
 ```
-
-Then reload VSCode.
 
 ### From VSIX
 
@@ -36,11 +79,3 @@ code --install-extension courgette-0.1.0.vsix
 |---------|---------|-------------|
 | `courgette.steps.globs` | `["**/step_*.py", "**/*_steps.py", "**/steps/**/*.py"]` | Glob patterns to find step files |
 | `courgette.python.command` | auto-detect | Command to run pytest (e.g. `uv run`) |
-
-## Development
-
-```bash
-npm install
-npm run compile   # or: npm run watch
-npm test          # runs vitest
-```

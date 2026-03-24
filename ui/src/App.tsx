@@ -1,315 +1,1038 @@
-import { useCallback, useState, useMemo } from "react";
-import { TagInput } from "./components/TagInput";
-import { StepRow } from "./components/Builder/StepRow";
-import { SortableStepList } from "./components/Builder/SortableStepList";
-import { StepsPanel } from "./components/Library/StepsPanel";
-import { StoreProvider, useAppState, useDispatch } from "./store";
-import { runFeature, saveFeature } from "./api";
-import type { BuilderState, ScenarioResultData, StepResultData } from "./types";
-import "./styles/index.css";
+/**
+ * App — root component wiring the new Storybook components to the backend API.
+ *
+ * Layout:
+ *   Sidebar (feature library) | Header (FeatureHeader) | Main (Editor + Run Lane)
+ *
+ * Data flow:
+ *   1. On mount: fetch steps + features from backend
+ *   2. Steps → patternsByKeyword for Editor autocomplete
+ *   3. Features → sidebar entries grouped by directory
+ *   4. On run: build Gherkin → POST /api/run → map results to stepStatus/stepErrors
+ *   5. On save: build Gherkin → POST /api/save
+ */
 
-function buildGherkin(b: BuilderState): string {
-  if (!b.featureName) return "";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Layout, type FeatureEntry } from "./components/Layout";
+import { FeatureHeader } from "./components/FeatureHeader";
+import { Editor, type ScenarioData, type RuleData, type Step } from "./components/Editor";
+import type { StepPattern } from "./components/StepInput";
+import { fetchSteps, fetchFeatures, fetchKeywords, runFeature, runFeatureFile, saveFeature } from "./api";
+import type { StepDefinition, LibraryFeature, ScenarioResultData } from "./types";
+import "./theme.css";
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+let _idCounter = 0;
+const uid = () => `app_${++_idCounter}_${Date.now()}`;
+
+// ---------------------------------------------------------------------------
+// Hash routing helpers
+// ---------------------------------------------------------------------------
+
+const NEW_PREFIX = ";new;/";
+const DRAFT_PREFIX = "courgette_draft:";
+
+/** Read the feature path from location.hash. Returns undefined if empty. */
+function getHashPath(): string | undefined {
+  const h = window.location.hash;
+  if (!h || h === "#" || h === "#/") return undefined;
+  // Strip leading "#/"
+  return h.replace(/^#\/?/, "");
+}
+
+function setHashPath(path: string) {
+  window.location.hash = "#/" + path;
+}
+
+/** Check if a hash path is a new-feature draft. Returns the directory or false.
+ *  Hash format: `;new;/dir/subdir/uniqueId` → returns `dir/subdir` */
+function isNewFeatureHash(path: string): string | false {
+  if (!path.startsWith(NEW_PREFIX)) return false;
+  const rest = path.slice(NEW_PREFIX.length);
+  // The last segment is the unique draft ID — strip it to get the directory
+  const lastSlash = rest.lastIndexOf("/");
+  return lastSlash > 0 ? rest.slice(0, lastSlash) : rest;
+}
+
+// ---------------------------------------------------------------------------
+// Per-feature localStorage draft persistence
+// ---------------------------------------------------------------------------
+
+interface FeatureDraft {
+  title: string;
+  description: string;
+  language: string;
+  tags: string[];
+  filename?: string;
+  scenarios: (ScenarioData | RuleData)[];
+  background: Step[];
+}
+
+function draftKey(hashPath: string): string {
+  return DRAFT_PREFIX + hashPath;
+}
+
+function saveDraft(hashPath: string, draft: FeatureDraft) {
+  try {
+    localStorage.setItem(draftKey(hashPath), JSON.stringify(draft));
+  } catch { /* quota */ }
+}
+
+function loadDraft(hashPath: string): FeatureDraft | null {
+  try {
+    const raw = localStorage.getItem(draftKey(hashPath));
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
+
+function removeDraft(hashPath: string) {
+  try { localStorage.removeItem(draftKey(hashPath)); } catch { /* */ }
+}
+
+function listDraftKeys(): string[] {
+  const keys: string[] = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (k?.startsWith(DRAFT_PREFIX)) keys.push(k.slice(DRAFT_PREFIX.length));
+  }
+  return keys;
+}
+
+/** Map backend StepDefinition[] → patternsByKeyword for StepInput. */
+function buildPatternsByKeyword(steps: StepDefinition[]): Record<string, StepPattern[]> {
+  const map: Record<string, StepPattern[]> = { Given: [], When: [], Then: [], And: [], But: [], "*": [] };
+
+  for (const s of steps) {
+    const pat: StepPattern = {
+      display: s.display,
+      segments: s.segments,
+      description: s.docstring || undefined,
+    };
+    const kw = s.keyword;
+    if (kw in map) map[kw].push(pat);
+    // And/But/* get all patterns
+    map["And"].push(pat);
+    map["But"].push(pat);
+    map["*"].push(pat);
+  }
+
+  // Deduplicate all keyword lists
+  for (const kw of Object.keys(map)) {
+    const seen = new Set<string>();
+    map[kw] = map[kw].filter((p) => {
+      if (seen.has(p.display)) return false;
+      seen.add(p.display);
+      return true;
+    });
+  }
+
+  return map;
+}
+
+/** Group features by root directory from pyproject.toml config.
+ *  Also injects new-feature drafts (`;new;/dir` paths) into their folders. */
+function groupFeatures(features: LibraryFeature[], draftPaths: Set<string>, editedPath?: string): Record<string, FeatureEntry[]> {
+  const groups: Record<string, FeatureEntry[]> = {};
+  for (const f of features) {
+    const dir = (f as any).group || f.path.split("/").slice(0, -1).join("/") || ".";
+    if (!groups[dir]) groups[dir] = [];
+    groups[dir].push({
+      path: f.path,
+      name: f.name,
+      description: f.description || undefined,
+      language: (f as any).language || undefined,
+      edited: f.path === editedPath,
+    });
+  }
+  // Add new-feature drafts (`;new;/dir` paths) as draft entries
+  for (const dp of draftPaths) {
+    const dir = isNewFeatureHash(dp);
+    if (dir === false) continue;
+    // Load draft to get its title
+    const draft = loadDraft(dp);
+    const name = draft?.title || "New feature";
+    if (!groups[dir]) groups[dir] = [];
+    groups[dir].push({
+      path: dp,
+      name,
+      draft: true,
+    });
+  }
+  return groups;
+}
+
+/** Convert a LibraryFeature to Editor initial scenarios.
+ * Keywords are stored as canonical English (Given/When/Then/And/But).
+ * keywordMap is kept for backwards compat but no longer used for step keywords. */
+function featureToScenarios(feat: LibraryFeature, _keywordMap?: Record<string, string>): (ScenarioData | RuleData)[] {
+  const items: (ScenarioData | RuleData)[] = [];
+
+  for (const sc of feat.scenarios) {
+    items.push({
+      id: uid(),
+      type: (sc.type as "Scenario" | "Scenario Outline") || "Scenario",
+      name: sc.name,
+      description: "",
+      tags: [],
+      steps: sc.steps.map((s) => ({
+        id: uid(),
+        keyword: s.keyword,
+        text: s.text,
+        docstring: s.doc_string ? (typeof s.doc_string === "string" ? { content: s.doc_string } : { content: s.doc_string.content, mediaType: s.doc_string.media_type || undefined }) : undefined,
+        datatable: s.data_table,
+      })),
+      examples: sc.examples,
+    } satisfies ScenarioData);
+  }
+
+  for (const rule of feat.rules || []) {
+    items.push({
+      id: uid(),
+      kind: "rule",
+      name: rule.name,
+      description: "",
+      tags: [],
+      background: [],
+      children: rule.scenarios.map((sc) => ({
+        id: uid(),
+        type: (sc.type as "Scenario" | "Scenario Outline") || "Scenario",
+        name: sc.name,
+        description: "",
+        tags: [],
+        steps: sc.steps.map((s) => ({
+          id: uid(),
+          keyword: s.keyword,
+          text: s.text,
+          docstring: s.doc_string ? (typeof s.doc_string === "string" ? { content: s.doc_string } : { content: s.doc_string.content, mediaType: s.doc_string.media_type || undefined }) : undefined,
+          datatable: s.data_table,
+        })),
+      })),
+    } satisfies RuleData);
+  }
+
+  return items;
+}
+
+type DotStatus = "idle" | "running" | "passed" | "error" | "skipped";
+
+/** Build Gherkin text from Editor state. */
+function buildGherkin(
+  title: string,
+  description: string,
+  tags: string[],
+  language: string,
+  scenarios: (ScenarioData | RuleData)[],
+  background?: Step[],
+  keywords?: Record<string, string>,
+): string {
+  if (!title) return "";
+  const kw = {
+    feature: keywords?.feature || "Feature",
+    background: keywords?.background || "Background",
+    scenario: keywords?.scenario || "Scenario",
+    scenario_outline: keywords?.scenario_outline || "Scenario Outline",
+    examples: keywords?.examples || "Examples",
+    rule: keywords?.rule || "Rule",
+  };
+  // Map canonical step keywords → localized for Gherkin output
+  const stepKw: Record<string, string> = {
+    Given: keywords?.given || "Given",
+    When: keywords?.when || "When",
+    Then: keywords?.then || "Then",
+    And: keywords?.and || "And",
+    But: keywords?.but || "But",
+    "*": "*",
+  };
+  const localizeKw = (k: string) => stepKw[k] ?? k;
+
   let g = "";
-  if (b.featureTags.length > 0) g += b.featureTags.map(t => t.startsWith("@") ? t : `@${t}`).join(" ") + "\n";
-  g += `Feature: ${b.featureName}\n`;
-  if (b.featureDesc) g += `  ${b.featureDesc}\n`;
-  if (b.background.length > 0) {
-    g += `\n  Background:\n`;
-    for (const s of b.background) {
-      if (s.text) g += `    ${s.keyword} ${s.text}\n`;
+  if (language !== "en") g += `# language: ${language}\n`;
+  if (tags.length > 0) g += tags.join(" ") + "\n";
+  g += `${kw.feature}: ${title}\n`;
+  if (description) {
+    for (const line of description.split("\n")) g += `  ${line}\n`;
+  }
+
+  // Background
+  if (background && background.length > 0) {
+    g += `\n  ${kw.background}:\n`;
+    for (const step of background) {
+      if (step.text) g += `    ${localizeKw(step.keyword)} ${step.text}\n`;
     }
   }
-  for (const sc of b.scenarios) {
-    if (sc.tags.length > 0) g += `\n  ${sc.tags.map(t => t.startsWith("@") ? t : `@${t}`).join(" ")}\n`;
-    g += `${sc.tags.length > 0 ? "" : "\n"}  ${sc.type}: ${sc.name || "Untitled"}\n`;
-    for (const s of sc.steps) {
-      if (s.text) g += `    ${s.keyword} ${s.text}\n`;
-      if (s.data_table) {
-        g += `      | ${s.data_table.headers.join(" | ")} |\n`;
-        for (const row of s.data_table.rows) {
-          g += `      | ${row.join(" | ")} |\n`;
-        }
-      }
+
+  const stepGherkin = (step: Step, indent: string) => {
+    let s = `${indent}${localizeKw(step.keyword)} ${step.text}\n`;
+    if (step.docstring) {
+      const delim = step.docstring.mediaType ? `\`\`\`${step.docstring.mediaType}` : `"""`;
+      const delimEnd = step.docstring.mediaType ? "```" : `"""`;
+      s += `${indent}  ${delim}\n`;
+      for (const line of step.docstring.content.split("\n")) s += `${indent}  ${line}\n`;
+      s += `${indent}  ${delimEnd}\n`;
+    }
+    if (step.datatable) {
+      s += `${indent}  | ${step.datatable.headers.join(" | ")} |\n`;
+      for (const row of step.datatable.rows) s += `${indent}  | ${row.join(" | ")} |\n`;
+    }
+    return s;
+  };
+
+  const scenarioGherkin = (sc: ScenarioData, indent: string) => {
+    let s = "";
+    if (sc.tags.length > 0) s += `\n${indent}${sc.tags.join(" ")}\n`;
+    const scKw = sc.type === "Scenario Outline" ? kw.scenario_outline : kw.scenario;
+    s += `${sc.tags.length > 0 ? "" : "\n"}${indent}${scKw}: ${sc.name || "Untitled"}\n`;
+    for (const step of sc.steps) {
+      if (step.text) s += stepGherkin(step, indent + "  ");
     }
     if (sc.type === "Scenario Outline" && sc.examples) {
-      g += `\n    Examples:\n`;
-      g += `      | ${sc.examples.headers.join(" | ")} |\n`;
-      for (const row of sc.examples.rows) {
-        g += `      | ${row.join(" | ")} |\n`;
-      }
+      s += `\n${indent}  ${kw.examples}:\n`;
+      s += `${indent}    | ${sc.examples.headers.join(" | ")} |\n`;
+      for (const row of sc.examples.rows) s += `${indent}    | ${row.join(" | ")} |\n`;
+    }
+    return s;
+  };
+
+  for (const item of scenarios) {
+    if ("kind" in item && item.kind === "rule") {
+      const rule = item as RuleData;
+      g += `\n  ${kw.rule}: ${rule.name}\n`;
+      for (const child of rule.children) g += scenarioGherkin(child, "    ");
+    } else {
+      g += scenarioGherkin(item as ScenarioData, "  ");
     }
   }
+
   return g;
 }
 
-function AppContent() {
-  const state = useAppState();
-  const dispatch = useDispatch();
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [activeStepInfo, setActiveStepInfo] = useState<{ scenarioId: string | null; stepId: string; keyword: string; text: string } | null>(null);
-  const [featuresFilter, setFeaturesFilter] = useState("");
-  const [scenarioResults, setScenarioResults] = useState<ScenarioResultData[]>([]);
-  const [runStatus, setRunStatus] = useState<"idle" | "running" | "done">("idle");
+// ---------------------------------------------------------------------------
+// App Component
+// ---------------------------------------------------------------------------
 
-  const handleRun = useCallback(async () => {
-    const content = buildGherkin(state.builder);
+export default function App() {
+  // Backend data
+  const [steps, setSteps] = useState<StepDefinition[]>([]);
+  const [features, setFeatures] = useState<LibraryFeature[]>([]);
+
+  // Feature header state
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [language, setLanguage] = useState("en");
+  const [tags, setTags] = useState<string[]>([]);
+  const [filename, setFilename] = useState<string | undefined>();
+  const [dirty, setDirty] = useState(false);
+
+  // Feature-level run status (for the run suite modal)
+  const [featureRunStatus, setFeatureRunStatus] = useState<Record<string, "passed" | "error" | "idle">>({});
+
+  // Localized Gherkin keywords
+  const [gherkinKeywords, setGherkinKeywords] = useState<Record<string, string>>({
+    given: "Given", when: "When", then: "Then", and: "And", but: "But",
+  });
+
+  // Editor scenarios (managed by Editor internally, but we need a ref for save/run)
+  const [initialScenarios, setInitialScenarios] = useState<(ScenarioData | RuleData)[]>([]);
+  const [initialBackground, setInitialBackground] = useState<Step[]>([]);
+  const [selectedFeature, setSelectedFeature] = useState<string | undefined>();
+
+  // Track which feature paths have localStorage drafts (for sidebar dirty indicators)
+  const [draftPaths, setDraftPaths] = useState<Set<string>>(() => new Set(listDraftKeys()));
+
+  // The current hash path — the "key" for draft persistence
+  const currentHashRef = useRef<string | undefined>(getHashPath());
+  // Suppress hashchange handler while we programmatically set the hash
+  const suppressHashChange = useRef(false);
+  // Live Editor state — updated via onScenariosChange, used by buildGherkin
+  const liveScenarios = useRef<(ScenarioData | RuleData)[]>([]);
+  const liveBackground = useRef<Step[]>([]);
+  // Suppress dirty flag during reset
+  const suppressDirty = useRef(false);
+
+  // Run state
+  const [stepStatus, setStepStatus] = useState<Record<string, DotStatus>>({});
+  const [hasRunnableScenario, setHasRunnableScenario] = useState(false);
+  const [stepErrors, setStepErrors] = useState<Record<string, string>>({});
+  const [exampleRowStatus, setExampleRowStatus] = useState<Record<string, { status: DotStatus; error?: string }[]>>({});
+
+  // Derived
+  const patternsByKeyword = useMemo(() => buildPatternsByKeyword(steps), [steps]);
+  const editedFeaturePath = dirty && selectedFeature ? selectedFeature : undefined;
+  const featureGroups = useMemo(() => groupFeatures(features, draftPaths, editedFeaturePath), [features, draftPaths, editedFeaturePath]);
+  const allTags = useMemo(() => {
+    const tagSet = new Set<string>();
+    for (const f of features) {
+      for (const t of f.tags) {
+        const name = typeof t === "string" ? t : t.name;
+        tagSet.add(name.startsWith("@") ? name : `@${name}`);
+      }
+    }
+    return Array.from(tagSet).sort();
+  }, [features]);
+
+  /** Save the current editor state as a draft for the current hash path. Only saves when dirty. */
+  const saveDraftForCurrent = useCallback(() => {
+    const hp = currentHashRef.current;
+    if (!hp || !dirty) return;
+    // Only save background if it has steps with actual text (not just the default empty Given)
+    const bg = liveBackground.current;
+    const hasBgContent = bg.some((s) => s.text.trim() !== "");
+    saveDraft(hp, { title, description, language, tags, filename, scenarios: liveScenarios.current, background: hasBgContent ? bg : [] });
+    setDraftPaths(new Set(listDraftKeys()));
+  }, [dirty, title, description, language, tags, filename]);
+
+  /** Apply a draft to the editor state. */
+  const applyDraft = useCallback((draft: FeatureDraft) => {
+    setTitle(draft.title);
+    setDescription(draft.description);
+    setLanguage(draft.language);
+    setTags(draft.tags);
+    setFilename(draft.filename);
+    setDirty(true);
+    setInitialScenarios(draft.scenarios);
+    setInitialBackground(draft.background);
+    setStepStatus({});
+    setStepErrors({});
+    setExampleRowStatus({});
+  }, []);
+
+  /** Clear run state and reset editor for a clean view. */
+  const resetRunState = useCallback(() => {
+    setStepStatus({});
+    setStepErrors({});
+    setExampleRowStatus({});
+  }, []);
+
+  // Fetch on mount
+  useEffect(() => {
+    fetchSteps().then(setSteps).catch(console.error);
+    fetchFeatures().then(setFeatures).catch(console.error);
+  }, []);
+
+  // Fetch localized keywords when language changes
+  useEffect(() => {
+    fetchKeywords(language).then(setGherkinKeywords).catch(console.error);
+  }, [language]);
+
+  // Build localized keyword list for the Editor
+  const localizedKeywords = useMemo(() => {
+    const kw = gherkinKeywords;
+    return [
+      kw.given || "Given",
+      kw.when || "When",
+      kw.then || "Then",
+      kw.and || "And",
+      kw.but || "But",
+      "*",
+    ];
+  }, [gherkinKeywords]);
+
+  // Load a feature from the library (also called from hashchange)
+  const handleSelectFeature = useCallback(async (path: string) => {
+    // Save draft for the feature we're leaving
+    saveDraftForCurrent();
+
+    // Handle new-feature draft paths (`;new;/dir`)
+    const newDir = isNewFeatureHash(path);
+    if (newDir !== false) {
+      const draft = loadDraft(path);
+      if (draft) {
+        suppressHashChange.current = true;
+        setHashPath(path);
+        currentHashRef.current = path;
+        suppressHashChange.current = false;
+        applyDraft(draft);
+        setSelectedFeature(undefined);
+      }
+      return;
+    }
+
+    const feat = features.find((f) => f.path === path);
+    if (!feat) return;
+
+    // Update hash
+    suppressHashChange.current = true;
+    setHashPath(path);
+    currentHashRef.current = path;
+    suppressHashChange.current = false;
+
+    // Check for a localStorage draft
+    const draft = loadDraft(path);
+    if (draft) {
+      applyDraft(draft);
+      setSelectedFeature(path);
+      return;
+    }
+
+    const lang = (feat as any).language || "en";
+    const kw = await fetchKeywords(lang);
+    setGherkinKeywords(kw);
+
+    suppressDirty.current = true;
+    setTitle(feat.name);
+    setDescription(feat.description || "");
+    setLanguage(lang);
+    setTags(feat.tags.map((t) => typeof t === "string" ? t : t.name));
+    setFilename(feat.path);
+    setDirty(false);
+    setSelectedFeature(path);
+    setInitialScenarios(featureToScenarios(feat, kw));
+    const bgSteps = (feat.background || []).map((s) => ({
+      id: uid(),
+      keyword: s.keyword,
+      text: s.text,
+    }));
+    setInitialBackground(bgSteps);
+    resetRunState();
+    // Re-enable dirty tracking after React flushes effects (onScenariosChange fires in useEffect)
+    setTimeout(() => { suppressDirty.current = false; }, 100);
+  }, [features, saveDraftForCurrent, applyDraft, resetRunState]);
+
+  // Create a blank new feature in a directory
+  const handleCreateFeature = useCallback((directory: string) => {
+    // Save draft for the feature we're leaving
+    saveDraftForCurrent();
+
+    // Each new feature gets a unique hash: `;new;/dir/uniqueId`
+    const draftId = Date.now().toString(36);
+    const newHash = `${NEW_PREFIX}${directory}/${draftId}`;
+
+    // Generate a default name based on existing features in the directory
+    const existing = featureGroups[directory] || [];
+    const count = existing.length + 1;
+    const defaultName = `New feature ${count}`;
+    const defaultFilename = `${directory}/${defaultName.toLowerCase().replace(/\s+/g, "_")}.feature`;
+
+    suppressHashChange.current = true;
+    setHashPath(newHash);
+    currentHashRef.current = newHash;
+    suppressHashChange.current = false;
+
+    setTitle(defaultName);
+    setDescription("");
+    setLanguage("en");
+    setTags([]);
+    setFilename(defaultFilename);
+    setDirty(true);
+    setSelectedFeature(undefined);
+    setInitialScenarios([]);
+    setInitialBackground([]);
+    resetRunState();
+  }, [featureGroups, saveDraftForCurrent, applyDraft, resetRunState]);
+
+  // Restore feature from hash on initial load (after features are fetched)
+  useEffect(() => {
+    if (features.length === 0) return;
+    const hp = getHashPath();
+    if (!hp) return;
+
+    const dir = isNewFeatureHash(hp);
+    if (dir !== false) {
+      const draft = loadDraft(hp);
+      if (draft) {
+        currentHashRef.current = hp;
+        applyDraft(draft);
+      } else {
+        handleCreateFeature(dir);
+      }
+    } else {
+      handleSelectFeature(hp);
+    }
+    // Only run on initial features load
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [features]);
+
+  // Listen for hashchange (browser back/forward)
+  useEffect(() => {
+    const onHashChange = () => {
+      if (suppressHashChange.current) return;
+      const hp = getHashPath();
+      if (hp === currentHashRef.current) return;
+
+      // Save draft for the feature we're leaving
+      saveDraftForCurrent();
+
+      if (!hp) {
+        // Navigated to empty hash — clear editor
+        currentHashRef.current = undefined;
+        setTitle("");
+        setDescription("");
+        setLanguage("en");
+        setTags([]);
+        setFilename(undefined);
+        setDirty(false);
+        setSelectedFeature(undefined);
+        setInitialScenarios([]);
+        setInitialBackground([]);
+        resetRunState();
+        return;
+      }
+
+      currentHashRef.current = hp;
+      const dir = isNewFeatureHash(hp);
+      if (dir !== false) {
+        const draft = loadDraft(hp);
+        if (draft) {
+          applyDraft(draft);
+          setSelectedFeature(undefined);
+        }
+      } else {
+        // Existing feature path
+        const draft = loadDraft(hp);
+        if (draft) {
+          applyDraft(draft);
+          setSelectedFeature(hp);
+        } else {
+          const feat = features.find((f) => f.path === hp);
+          if (feat) {
+            // Load from server data (without saving draft first since we already did)
+            const lang = (feat as any).language || "en";
+            fetchKeywords(lang).then((kw) => {
+              setGherkinKeywords(kw);
+              setTitle(feat.name);
+              setDescription(feat.description || "");
+              setLanguage(lang);
+              setTags(feat.tags.map((t) => typeof t === "string" ? t : t.name));
+              setFilename(feat.path);
+              setDirty(false);
+              setSelectedFeature(hp);
+              setInitialScenarios(featureToScenarios(feat, kw));
+              const bgSteps = (feat.background || []).map((s) => ({
+                id: uid(),
+                keyword: s.keyword,
+                text: s.text,
+              }));
+              setInitialBackground(bgSteps);
+              resetRunState();
+            });
+          }
+        }
+      }
+    };
+
+    window.addEventListener("hashchange", onHashChange);
+    return () => window.removeEventListener("hashchange", onHashChange);
+  }, [features, saveDraftForCurrent, applyDraft, resetRunState]);
+
+  // Auto-save draft when editor state changes (debounced)
+  useEffect(() => {
+    if (!dirty) return;
+    const timer = setTimeout(() => {
+      saveDraftForCurrent();
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [dirty, saveDraftForCurrent]);
+
+  // Mark dirty on any header change
+  const handleTitleChange = useCallback((v: string) => { setTitle(v); setDirty(true); }, []);
+  const handleDescChange = useCallback((v: string) => { setDescription(v); setDirty(true); }, []);
+  const handleLangChange = useCallback((v: string) => { setLanguage(v); setDirty(true); }, []);
+  const handleTagsChange = useCallback((v: string[]) => { setTags(v); setDirty(true); }, []);
+
+  // Save
+  const handleSave = useCallback(async () => {
+    if (!filename) return;
+    const content = buildGherkin(title, description, tags, language, liveScenarios.current, liveBackground.current, gherkinKeywords);
     if (!content) return;
-    setRunStatus("running");
-    setScenarioResults([]);
+    const result = await saveFeature(content, filename);
+    if (result.error) alert("Save failed: " + result.error);
+    else {
+      setDirty(false);
+      // Clear draft on successful save
+      const hp = currentHashRef.current;
+      if (hp) {
+        removeDraft(hp);
+        setDraftPaths(new Set(listDraftKeys()));
+      }
+      // Clear run status for this feature (content changed)
+      setFeatureRunStatus((prev) => {
+        const next = { ...prev };
+        delete next[filename];
+        return next;
+      });
+    }
+  }, [title, description, tags, language, initialScenarios, filename, gherkinKeywords]);
+
+  const handleSaveAs = useCallback(async (newName: string) => {
+    const content = buildGherkin(title, description, tags, language, liveScenarios.current, liveBackground.current, gherkinKeywords);
+    if (!content) return;
+    const result = await saveFeature(content, newName);
+    if (result.error) alert("Save failed: " + result.error);
+    else {
+      // Clear old draft
+      const hp = currentHashRef.current;
+      if (hp) removeDraft(hp);
+
+      setFilename(newName);
+      setDirty(false);
+
+      // Update hash to the new path
+      suppressHashChange.current = true;
+      setHashPath(newName);
+      currentHashRef.current = newName;
+      suppressHashChange.current = false;
+      setSelectedFeature(newName);
+      setDraftPaths(new Set(listDraftKeys()));
+
+      // Clear run status for both old and new paths
+      setFeatureRunStatus((prev) => {
+        const next = { ...prev };
+        if (hp) delete next[hp];
+        delete next[newName];
+        return next;
+      });
+    }
+  }, [title, description, tags, language, initialScenarios, gherkinKeywords]);
+
+  // Run
+  const handleRunFeature = useCallback(async () => {
+    const content = buildGherkin(title, description, tags, language, liveScenarios.current, liveBackground.current, gherkinKeywords);
+    if (!content) return;
+
+    const scenarios = liveScenarios.current;
+    // Set all steps to running
+    const allStepIds: string[] = [];
+    for (const item of scenarios) {
+      if ("kind" in item && item.kind === "rule") {
+        for (const child of (item as RuleData).children) {
+          for (const s of child.steps) allStepIds.push(s.id);
+        }
+      } else {
+        for (const s of (item as ScenarioData).steps) allStepIds.push(s.id);
+      }
+    }
+    const running: Record<string, DotStatus> = {};
+    for (const id of allStepIds) running[id] = "running";
+    setStepStatus(running);
+    setStepErrors({});
+
     try {
       const result = await runFeature(content);
       if (result.error) {
-        setScenarioResults([]);
-      } else {
-        setScenarioResults(result.scenarios || []);
+        const idle: Record<string, DotStatus> = {};
+        for (const id of allStepIds) idle[id] = "idle";
+        setStepStatus(idle);
+        setStepErrors({ _feature: result.error });
+        return;
       }
-      setRunStatus("done");
+
+      // Map results to step statuses
+      mapRunResults(result.scenarios || [], scenarios);
     } catch {
-      setRunStatus("done");
+      const idle: Record<string, DotStatus> = {};
+      for (const id of allStepIds) idle[id] = "idle";
+      setStepStatus(idle);
     }
-  }, [state.builder]);
+  }, [title, description, tags, language, gherkinKeywords]);
 
-  const handleSave = useCallback(async (forcePath?: string) => {
-    const content = buildGherkin(state.builder);
+  const handleRunScenario = useCallback(async (scenarioId: string) => {
+    // Find scenario and build gherkin for just it
+    let targetSc: ScenarioData | undefined;
+    for (const item of liveScenarios.current) {
+      if ("kind" in item && item.kind === "rule") {
+        targetSc = (item as RuleData).children.find((c) => c.id === scenarioId);
+      } else if ((item as ScenarioData).id === scenarioId) {
+        targetSc = item as ScenarioData;
+      }
+      if (targetSc) break;
+    }
+    if (!targetSc) return;
+
+    // Set steps to running
+    const running: Record<string, DotStatus> = { ...stepStatus };
+    for (const s of targetSc.steps) running[s.id] = "running";
+    setStepStatus(running);
+
+    const content = buildGherkin(title, description, tags, language, [targetSc], liveBackground.current, gherkinKeywords);
     if (!content) return;
-    const filename = forcePath || state.builder.editingPath || (state.builder.featureName.toLowerCase().replace(/\s+/g, "_") + ".feature");
-    const result = await saveFeature(content, filename);
-    if (result.error) alert("Save failed: " + result.error);
-  }, [state.builder]);
 
-  const handleSaveAs = useCallback(() => {
-    const name = prompt("Save as:", (state.builder.featureName || "feature").toLowerCase().replace(/\s+/g, "_") + ".feature");
-    if (name) handleSave(name);
-  }, [state.builder.featureName, handleSave]);
+    try {
+      const result = await runFeature(content);
+      if (result.scenarios?.[0]) {
+        mapScenarioResult(result.scenarios[0], targetSc);
+      }
+    } catch {
+      const reset = { ...stepStatus };
+      for (const s of targetSc.steps) reset[s.id] = "idle";
+      setStepStatus(reset);
+    }
+  }, [title, description, tags, language, stepStatus, gherkinKeywords]);
 
-  // Get result for a specific scenario by index
-  const getScenarioResult = (idx: number): ScenarioResultData | null => {
-    return scenarioResults[idx] || null;
-  };
+  /** Map run results to step statuses, including example row statuses for outlines. */
+  const mapRunResults = useCallback((results: ScenarioResultData[], scenarios: (ScenarioData | RuleData)[]) => {
+    const newStatus: Record<string, DotStatus> = {};
+    const newErrors: Record<string, string> = {};
+    const newExampleRowStatus: Record<string, { status: DotStatus; error?: string }[]> = {};
+    let resultIdx = 0;
 
-  // Compute prior context writes for a step
-  const getPriorWrites = (steps: typeof state.builder.scenarios[0]["steps"], idx: number) => {
-    const writes: string[] = [];
-    for (let i = 0; i < idx; i++) {
-      for (const sd of state.steps) {
-        if (sd.display === steps[i].text || sd.segments.every((seg) => !seg.param && steps[i].text.includes(seg.text))) {
-          writes.push(...(sd.context_writes || []));
-          break;
+    const mapScenarioOrOutline = (sc: ScenarioData) => {
+      if (sc.type === "Scenario Outline" && sc.examples?.rows?.length) {
+        // Each example row is a separate result
+        const rowStatuses: { status: DotStatus; error?: string }[] = [];
+        for (let r = 0; r < sc.examples.rows.length; r++) {
+          if (resultIdx < results.length) {
+            const rowResult = results[resultIdx];
+            const rowStatus: DotStatus = rowResult.status === "passed" ? "passed" : "error";
+            const rowError = rowResult.steps.find((s) => s.error)?.error;
+            rowStatuses.push({ status: rowStatus, error: rowError ?? undefined });
+            // Map step statuses from the first row (steps are shared across rows)
+            if (r === 0) {
+              mapStepResults(rowResult, sc, newStatus, newErrors);
+            }
+            resultIdx++;
+          } else {
+            rowStatuses.push({ status: "idle" });
+          }
+        }
+        newExampleRowStatus[sc.id] = rowStatuses;
+        // Overall step status: passed if all rows passed, error if any failed
+        const allRowsPassed = rowStatuses.every((r) => r.status === "passed");
+        const anyRowFailed = rowStatuses.some((r) => r.status === "error");
+        for (const step of sc.steps) {
+          if (anyRowFailed) newStatus[step.id] = "error";
+          else if (allRowsPassed) newStatus[step.id] = "passed";
+        }
+      } else {
+        if (resultIdx < results.length) {
+          mapStepResults(results[resultIdx], sc, newStatus, newErrors);
+          resultIdx++;
         }
       }
-    }
-    return [...new Set(writes)];
-  };
+    };
 
-  const filteredFeatures = useMemo(() =>
-    state.features.filter(f => !featuresFilter || f.name.toLowerCase().includes(featuresFilter.toLowerCase())),
-    [state.features, featuresFilter]
-  );
+    for (const item of scenarios) {
+      if ("kind" in item && item.kind === "rule") {
+        for (const child of (item as RuleData).children) {
+          mapScenarioOrOutline(child);
+        }
+      } else {
+        mapScenarioOrOutline(item as ScenarioData);
+      }
+    }
+
+    // Map background step status
+    if (initialBackground.length > 0) {
+      const bgHasError = results.some((r) => r.steps.length > 0 && r.steps[0].status === "failed");
+      const allPassed = results.length > 0 && results.every((r) => r.steps.length > 0 && r.steps[0].status === "passed");
+      for (const bgStep of initialBackground) {
+        newStatus[bgStep.id] = bgHasError ? "error" : allPassed ? "passed" : "idle";
+      }
+    }
+
+    setStepStatus(newStatus);
+    setStepErrors(newErrors);
+    setExampleRowStatus(newExampleRowStatus);
+  }, [initialBackground]);
+
+  const mapScenarioResult = useCallback((result: ScenarioResultData, sc: ScenarioData) => {
+    const newStatus = { ...stepStatus };
+    const newErrors = { ...stepErrors };
+    mapStepResults(result, sc, newStatus, newErrors);
+    setStepStatus(newStatus);
+    setStepErrors(newErrors);
+  }, [stepStatus, stepErrors]);
 
   return (
-    <>
-      {/* Header */}
-      <header>
-        <button className="sidebar-toggle" onClick={() => setSidebarOpen(!sidebarOpen)} title={sidebarOpen ? "Hide Features" : "Show Features"}>
-          {sidebarOpen ? "\u2630" : "\u2630"}
-        </button>
-        <svg width="28" height="28" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-          <ellipse cx="50" cy="55" rx="18" ry="38" fill="#5a9e3e" transform="rotate(-15 50 55)" />
-          <ellipse cx="50" cy="55" rx="14" ry="34" fill="#6abf4b" transform="rotate(-15 50 55)" />
-        </svg>
-        <h1>Courgette</h1>
-      </header>
-
-      <main className="app-layout">
-        {/* Left sidebar: Features */}
-        <aside className={`sidebar ${sidebarOpen ? "" : "collapsed"}`}>
-          <div className="sidebar-header">
-            Features
-          </div>
-          <div className="sidebar-content">
-            <div style={{ position: "relative", marginBottom: "0.4rem" }}>
-              <input
-                className="field"
-                placeholder="Filter..."
-                value={featuresFilter}
-                onChange={(e) => setFeaturesFilter(e.target.value)}
-                style={{ fontSize: "0.8rem" }}
-              />
-              {featuresFilter && (
-                <button onClick={() => setFeaturesFilter("")} style={{ position: "absolute", right: "0.4rem", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "var(--text-dim)", cursor: "pointer" }}>&times;</button>
-              )}
-            </div>
-            {filteredFeatures.map((feat, i) => (
-              <div key={i} className="feature-item" onClick={() => { dispatch({ type: "LOAD_FEATURE", feature: feat }); setScenarioResults([]); setRunStatus("idle"); }}>
-                <span>{feat.name}</span>
-                <span className="count">{feat.scenarios.length}</span>
-              </div>
-            ))}
-          </div>
-        </aside>
-
-        {/* Center: Builder */}
-        <div className="builder-panel">
-          {/* Feature card */}
-          <section className="card">
-            <label className="card-label">Feature</label>
-            <input className="field" value={state.builder.featureName} onChange={(e) => dispatch({ type: "SET_FEATURE_NAME", name: e.target.value })} placeholder="e.g. User login" />
-            <label className="card-label secondary">Description</label>
-            <input className="field" value={state.builder.featureDesc} onChange={(e) => dispatch({ type: "SET_FEATURE_DESC", desc: e.target.value })} placeholder="Optional description" style={{ fontSize: "0.8rem" }} />
-            <label className="card-label secondary">Tags</label>
-            <TagInput tags={state.builder.featureTags} onChange={(tags) => dispatch({ type: "SET_FEATURE_TAGS", tags })} suggestions={["smoke", "wip", "slow", "critical", "regression"]} />
-          </section>
-
-          {/* Background */}
-          {state.builder.background.length > 0 ? (
-            <section className="card" style={{ borderLeft: "3px solid var(--text-muted)" }}>
-              <div style={{ display: "flex", justifyContent: "space-between" }}>
-                <label className="card-label">Background</label>
-                <button style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-dim)", fontSize: "0.8rem" }} onClick={() => dispatch({ type: "REMOVE_BACKGROUND" })}>&#x2715;</button>
-              </div>
-              {state.builder.background.map((step) => (
-                <StepRow key={step.id} scenarioId={null} stepId={step.id} keyword={step.keyword} text={step.text} />
-              ))}
-              <button className="btn-add" style={{ fontSize: "0.75rem", padding: "0.25rem" }} onClick={() => dispatch({ type: "ADD_BG_STEP", keyword: "Given" })}>+ Step</button>
-            </section>
-          ) : (
-            <button className="btn-add" onClick={() => dispatch({ type: "ADD_BACKGROUND" })}>+ Background</button>
-          )}
-
-          {/* Scenarios */}
-          {state.builder.scenarios.map((sc, scIdx) => {
-            const result = getScenarioResult(scIdx);
-            return (
-              <section key={sc.id} className="card" style={{ borderLeft: `3px solid ${result ? (result.status === "passed" ? "var(--success)" : "var(--error)") : "var(--scenario-border)"}` }}>
-                <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <label className="card-label">{sc.type}</label>
-                  <button style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-dim)", fontSize: "0.8rem" }} onClick={() => dispatch({ type: "REMOVE_SCENARIO", id: sc.id })}>&#x2715;</button>
-                </div>
-                <input className="field" value={sc.name} onChange={(e) => dispatch({ type: "SET_SCENARIO_NAME", id: sc.id, name: e.target.value })} placeholder="Scenario name" />
-
-                {/* Steps with swim lane */}
-                <div className="scenario-steps-with-lane" style={{ marginTop: "0.5rem" }}>
-                  {/* Swim lane */}
-                  {runStatus === "done" && result && (
-                    <div className="swim-lane">
-                      {result.steps.map((sr, si) => (
-                        <div key={si} style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-                          <div className={`lane-icon ${sr.status === "passed" ? "pass" : sr.status === "failed" ? "fail" : "skip"}`}>
-                            {sr.status === "passed" ? "\u2713" : sr.status === "failed" ? "\u2717" : "\u2013"}
-                          </div>
-                          {si < result.steps.length - 1 && (
-                            <div className={`lane-connector ${sr.status === "passed" ? "pass" : sr.status === "failed" ? "fail" : "pending"}`} />
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Steps */}
-                  <div style={{ flex: 1 }}>
-                    <SortableStepList
-                      scenarioId={sc.id}
-                      steps={sc.steps}
-                      allStepDefs={state.steps}
-                      onStepFocus={(stepId, kw, txt) => {
-                        setActiveStepInfo({ scenarioId: sc.id, stepId, keyword: kw, text: txt });
-                      }}
-                      priorWritesFn={(idx) => getPriorWrites(sc.steps, idx)}
-                      examples={sc.type === "Scenario Outline" ? sc.examples : undefined}
-                    />
-                    {/* Show errors inline */}
-                    {runStatus === "done" && result?.steps.map((sr: StepResultData, si: number) =>
-                      sr.error ? (
-                        <div key={`err-${si}`} className="step-error-inline">
-                          {sr.error.split("\n")[0]}
-                        </div>
-                      ) : null
-                    )}
-                  </div>
-                </div>
-
-                <button className="btn-add" style={{ fontSize: "0.75rem", padding: "0.25rem" }} onClick={() => dispatch({ type: "ADD_STEP", scenarioId: sc.id, keyword: "Given" })}>+ Step</button>
-
-                {/* Scenario Outline Examples */}
-                {sc.type === "Scenario Outline" && sc.examples && (
-                  <div style={{ marginTop: "0.5rem", paddingTop: "0.35rem", borderTop: "1px dashed var(--border)" }}>
-                    <label className="card-label secondary">Examples</label>
-                    <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: "var(--mono)", fontSize: "0.78rem" }}>
-                      <thead><tr>
-                        {sc.examples.headers.map((h, i) => (
-                          <th key={i}><input className="field" style={{ textAlign: "center", fontWeight: 600, color: "var(--param)", fontSize: "0.78rem" }} value={h} onChange={(e) => { const nh = [...sc.examples!.headers]; nh[i] = e.target.value; dispatch({ type: "SET_EXAMPLES", scenarioId: sc.id, examples: { ...sc.examples!, headers: nh } }); }} /></th>
-                        ))}
-                      </tr></thead>
-                      <tbody>
-                        {sc.examples.rows.map((row, ri) => (
-                          <tr key={ri}>{row.map((cell, ci) => (
-                            <td key={ci}><input className="field" style={{ textAlign: "center", fontSize: "0.78rem" }} value={cell} onChange={(e) => { const nr = sc.examples!.rows.map(r => [...r]); nr[ri][ci] = e.target.value; dispatch({ type: "SET_EXAMPLES", scenarioId: sc.id, examples: { ...sc.examples!, rows: nr } }); }} /></td>
-                          ))}</tr>
-                        ))}
-                      </tbody>
-                    </table>
-                    <div style={{ display: "flex", gap: "0.25rem", marginTop: "0.2rem" }}>
-                      <button className="btn-add" style={{ fontSize: "0.7rem", padding: "0.15rem", flex: 1 }} onClick={() => { const ex = sc.examples!; dispatch({ type: "SET_EXAMPLES", scenarioId: sc.id, examples: { headers: [...ex.headers, "param"], rows: ex.rows.map(r => [...r, ""]) } }); }}>+ Col</button>
-                      <button className="btn-add" style={{ fontSize: "0.7rem", padding: "0.15rem", flex: 1 }} onClick={() => { const ex = sc.examples!; dispatch({ type: "SET_EXAMPLES", scenarioId: sc.id, examples: { ...ex, rows: [...ex.rows, ex.headers.map(() => "")] } }); }}>+ Row</button>
-                    </div>
-                  </div>
-                )}
-
-                {/* Tags */}
-                <div style={{ marginTop: "0.25rem" }}>
-                  <TagInput tags={sc.tags} onChange={(tags) => dispatch({ type: "SET_SCENARIO_TAGS", id: sc.id, tags })} suggestions={["smoke", "wip", "slow"]} />
-                </div>
-
-                {/* Result bar */}
-                {runStatus === "done" && result && (
-                  <div className={`scenario-result-bar ${result.status}`}>
-                    {result.status === "passed" ? "\u2713 PASSED" : "\u2717 FAILED"} — {result.steps.length} steps
-                  </div>
-                )}
-              </section>
-            );
-          })}
-
-          <div style={{ display: "flex", gap: "0.5rem" }}>
-            <button className="btn-add" style={{ flex: 1 }} onClick={() => dispatch({ type: "ADD_SCENARIO", scenarioType: "Scenario" })}>+ Scenario</button>
-            <button className="btn-add" style={{ flex: 1 }} onClick={() => dispatch({ type: "ADD_SCENARIO", scenarioType: "Scenario Outline" })}>+ Scenario Outline</button>
-          </div>
-
-          <div className="actions">
-            <button className="btn-primary" onClick={handleRun}>{runStatus === "running" ? "Running..." : "Run Tests"}</button>
-            <button className="btn-secondary" onClick={() => handleSave()}>Save</button>
-            <button className="btn-secondary" onClick={handleSaveAs}>Save As</button>
-            <button className="btn-secondary" style={{ marginLeft: "auto" }} onClick={() => { dispatch({ type: "CLEAR" }); setScenarioResults([]); setRunStatus("idle"); }}>Clear</button>
-          </div>
-        </div>
-
-        {/* Right: Steps panel */}
-        <aside className="steps-panel">
-          <StepsPanel
-            filterKeyword={activeStepInfo?.keyword}
-            filterText={activeStepInfo ? activeStepInfo.text : undefined}
-            onStepClick={(_step, prefix) => {
-              if (activeStepInfo) {
-                const { scenarioId, stepId } = activeStepInfo;
-                if (scenarioId) {
-                  dispatch({ type: "SET_STEP", scenarioId, stepId, field: "text", value: prefix });
-                } else {
-                  dispatch({ type: "SET_BG_STEP", stepId, field: "text", value: prefix });
-                }
+    <Layout
+      features={featureGroups}
+      selectedFeature={selectedFeature}
+      onSelectFeature={handleSelectFeature}
+      onCreateFeature={handleCreateFeature}
+      onRunAll={handleRunFeature}
+      onRunFeatures={async (paths) => {
+        // Mark all as idle, then run in parallel
+        const initial: Record<string, "passed" | "error" | "idle"> = {};
+        for (const p of paths) initial[p] = "idle";
+        setFeatureRunStatus((prev) => ({ ...prev, ...initial }));
+        const results = await Promise.all(
+          paths.map(async (p) => {
+            try {
+              const result = await runFeatureFile(p);
+              return { path: p, status: (result.status === "passed" ? "passed" : "error") as "passed" | "error" };
+            } catch {
+              return { path: p, status: "error" as const };
+            }
+          })
+        );
+        const updated: Record<string, "passed" | "error" | "idle"> = {};
+        for (const r of results) updated[r.path] = r.status;
+        setFeatureRunStatus((prev) => ({ ...prev, ...updated }));
+      }}
+      onDeleteDraft={(path) => {
+        removeDraft(path);
+        setDraftPaths(new Set(listDraftKeys()));
+        if (currentHashRef.current === path) {
+          window.location.hash = "";
+        }
+      }}
+      featureStatus={featureRunStatus}
+      markerHeaderContent={(() => {
+        const allIds = liveScenarios.current.flatMap((item) => {
+          if ("kind" in item && (item as any).kind === "rule") return ((item as any).children ?? []).flatMap((c: any) => c.steps?.map((s: any) => s.id) ?? []);
+          return (item as any).steps?.map((s: any) => s.id) ?? [];
+        });
+        const statuses = allIds.map((id: string) => stepStatus[id] || "idle");
+        const result = statuses.some((s: string) => s === "error") ? "error"
+          : statuses.length > 0 && statuses.every((s: string) => s === "passed") ? "passed" : "idle";
+        return (
+          <button
+            className="editor-lane-feature-btn"
+            data-result={result !== "idle" ? result : undefined}
+            disabled={!hasRunnableScenario}
+            title={!hasRunnableScenario ? "No valid scenarios to run" : "Run all scenarios"}
+            onClick={() => hasRunnableScenario && handleRunFeature()}
+          >
+            {result === "passed" ? "✓" : result === "error" ? "✗" : "▶"}
+          </button>
+        );
+      })()}
+      headerContent={
+        <FeatureHeader
+          title={title}
+          description={description}
+          language={language}
+          tags={tags}
+          availableTags={allTags}
+          onTitleChange={handleTitleChange}
+          onDescriptionChange={handleDescChange}
+          onLanguageChange={handleLangChange}
+          onTagsChange={handleTagsChange}
+          filename={filename}
+          dirty={dirty}
+          onSave={filename ? handleSave : undefined}
+          onSaveAs={handleSaveAs}
+          onReset={dirty && selectedFeature ? () => {
+            const hp = currentHashRef.current;
+            if (hp) removeDraft(hp);
+            suppressDirty.current = true;
+            // Re-load from server data
+            const feat = features.find((f) => f.path === selectedFeature);
+            if (feat) {
+              const lang = (feat as any).language || "en";
+              fetchKeywords(lang).then((kw) => {
+                setGherkinKeywords(kw);
+                setTitle(feat.name);
+                setDescription(feat.description || "");
+                setLanguage(lang);
+                setTags(feat.tags.map((t) => typeof t === "string" ? t : t.name));
+                setFilename(feat.path);
+                setInitialScenarios(featureToScenarios(feat, kw));
+                const bgSteps = (feat.background || []).map((s) => ({
+                  id: uid(),
+                  keyword: s.keyword,
+                  text: s.text,
+                }));
+                setInitialBackground(bgSteps);
+                setStepStatus({});
+                setStepErrors({});
+                setExampleRowStatus({});
+                setDirty(false);
+                if (hp) removeDraft(hp);
+                setDraftPaths(new Set(listDraftKeys()));
+                // Re-enable dirty tracking after React flushes
+                setTimeout(() => { suppressDirty.current = false; }, 100);
+              });
+            }
+          } : undefined}
+        />
+      }
+    >
+      <Editor
+        keywords={localizedKeywords}
+        patternsByKeyword={patternsByKeyword}
+        availableTags={allTags}
+        initialScenarios={initialScenarios}
+        initialBackground={initialBackground}
+        stepStatus={stepStatus}
+        stepErrors={stepErrors}
+        exampleRowStatus={exampleRowStatus}
+        onRunFeature={handleRunFeature}
+        onRunScenario={handleRunScenario}
+        onScenariosChange={useCallback((scenarios: (ScenarioData | RuleData)[], background: Step[]) => {
+          liveScenarios.current = scenarios;
+          liveBackground.current = background;
+          if (!suppressDirty.current) setDirty(true);
+          // Update runnable state for the feature run button
+          const runnable = scenarios.some((item) => {
+            if ("kind" in item && (item as any).kind === "rule") {
+              return ((item as any).children ?? []).some((c: any) => c.steps?.length > 0 && c.steps.every((s: any) => s.text?.trim()));
+            }
+            return (item as any).steps?.length > 0 && (item as any).steps.every((s: any) => s.text?.trim());
+          });
+          setHasRunnableScenario(runnable);
+        }, [])}
+        onInsertSuggestion={(scId, beforeStepId, suggestion) => {
+          // Parse suggestion like "Given I have the number {n:d}"
+          const parts = suggestion.match(/^(Given|When|Then|And|But|\*)\s+(.+)/);
+          const keyword = parts?.[1] ?? "Given";
+          const text = parts?.[2] ?? suggestion;
+          setInitialScenarios((prev) =>
+            prev.map((item) => {
+              if ("kind" in item && item.kind === "rule") {
+                const rule = item as RuleData;
+                return {
+                  ...rule,
+                  children: rule.children.map((c) => {
+                    if (c.id !== scId) return c;
+                    const idx = c.steps.findIndex((s) => s.id === beforeStepId);
+                    const newStep: Step = { id: uid(), keyword, text };
+                    const steps = [...c.steps];
+                    steps.splice(idx, 0, newStep);
+                    return { ...c, steps };
+                  }),
+                };
               }
-            }}
-          />
-        </aside>
-      </main>
-    </>
+              const sc = item as ScenarioData;
+              if (sc.id !== scId) return sc;
+              const idx = sc.steps.findIndex((s) => s.id === beforeStepId);
+              const newStep: Step = { id: uid(), keyword, text };
+              const steps = [...sc.steps];
+              steps.splice(idx, 0, newStep);
+              return { ...sc, steps };
+            })
+          );
+          setDirty(true);
+        }}
+      />
+    </Layout>
   );
 }
 
-export default function App() {
-  return (
-    <StoreProvider>
-      <AppContent />
-    </StoreProvider>
-  );
+// ---------------------------------------------------------------------------
+// Result mapping helper
+// ---------------------------------------------------------------------------
+
+function mapStepResults(
+  result: ScenarioResultData,
+  sc: ScenarioData,
+  statuses: Record<string, DotStatus>,
+  errors: Record<string, string>,
+) {
+  let hitError = false;
+  for (let i = 0; i < sc.steps.length && i < result.steps.length; i++) {
+    const stepId = sc.steps[i].id;
+    const sr = result.steps[i];
+    if (hitError) {
+      statuses[stepId] = "skipped";
+    } else if (sr.status === "passed") {
+      statuses[stepId] = "passed";
+    } else if (sr.status === "failed") {
+      statuses[stepId] = "error";
+      if (sr.error) errors[stepId] = sr.error;
+      hitError = true;
+    } else if (sr.status === "undefined") {
+      statuses[stepId] = "error";
+      errors[stepId] = `Undefined step: ${sr.text}`;
+      hitError = true;
+    } else {
+      statuses[stepId] = "skipped";
+    }
+  }
+  // Mark remaining steps as skipped if we ran out of results
+  for (let i = result.steps.length; i < sc.steps.length; i++) {
+    statuses[sc.steps[i].id] = "skipped";
+  }
 }

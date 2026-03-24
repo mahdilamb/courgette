@@ -29,11 +29,17 @@ class FixtureRegistry:
 
 
 class FixtureResolver:
-    """Per-scenario fixture resolver. Creates fixtures lazily and caches them."""
+    """Per-scenario fixture resolver. Creates fixtures lazily and caches them.
+
+    Supports both regular and generator/yield fixtures. Generator fixtures
+    are advanced to their first yielded value, and the generator is exhausted
+    during teardown (running any cleanup code after the yield).
+    """
 
     def __init__(self, factories: dict[str, Callable[..., Any]]) -> None:
         self._factories = factories
         self._cache: dict[str, Any] = {}
+        self._generators: list[Any] = []
 
     def resolve(self, name: str) -> Any:
         """Resolve a fixture by name. Raises LookupError if not found."""
@@ -45,6 +51,11 @@ class FixtureResolver:
         factory = self._factories[name]
         kwargs = self._resolve_factory_args(factory)
         value = factory(**kwargs)
+        # Generator/yield fixtures: advance to the yielded value
+        if inspect.isgenerator(value):
+            gen = value
+            value = next(gen)
+            self._generators.append(gen)
         self._cache[name] = value
         return value
 
@@ -58,7 +69,13 @@ class FixtureResolver:
         return kwargs
 
     def teardown(self) -> None:
-        """Clear cached values (call at end of scenario)."""
+        """Run generator fixture teardown and clear cached values."""
+        for gen in self._generators:
+            try:
+                next(gen, None)
+            except StopIteration:
+                pass
+        self._generators.clear()
         self._cache.clear()
 
 

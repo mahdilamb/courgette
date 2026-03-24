@@ -1,0 +1,22 @@
+{
+  "scopeName": "gherkin.python.injection",
+  "injectionSelector": "L:source.gherkin",
+  "patterns": [
+    {
+      "begin": "^\\s*(```|\"\"\")(python|py)\\s*$",
+      "end": "^\\s*(```|\"\"\")\\s*$",
+      "name": "meta.embedded.block.python",
+      "contentName": "meta.embedded.block.python",
+      "beginCaptures": {
+        "1": { "name": "punctuation.definition.string.begin.gherkin" },
+        "2": { "name": "fenced_code.block.language.gherkin" }
+      },
+      "endCaptures": {
+        "0": { "name": "punctuation.definition.string.end.gherkin" }
+      },
+      "patterns": [
+        { "include": "source.python" }
+      ]
+    }
+  ]
+}

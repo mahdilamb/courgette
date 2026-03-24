@@ -1,0 +1,122 @@
+/* Courgette theme — inspired by courgette skin (green), flowers (yellow), flesh (white) */
+
+:root {
+  /* Light mode (default) */
+  --bg-primary: #f8faf6;
+  --bg-secondary: #eef3ea;
+  --bg-tertiary: #e2eadb;
+  --bg-input: #ffffff;
+  --bg-dropdown: #ffffff;
+  --bg-hover: #e8f0e2;
+  --bg-highlight: #d4e4c8;
+
+  --border: #c5d4b8;
+  --border-focus: #7a9e5a;
+
+  --text-primary: #2d3a25;
+  --text-secondary: #4a5e3c;
+  --text-muted: #7a8e6c;
+  --text-placeholder: #9aab8c;
+
+  --keyword-bg: #e2eadb;
+  --keyword-color: #4a7a2e;
+
+  --param-color: #b8860b;
+  --param-bg: rgba(184, 134, 11, 0.08);
+
+  /* Rainbow param colors — ColorBrewer Set2 (light mode, darkened for readability) */
+  --rainbow-0: #4da64d;  /* teal-green */
+  --rainbow-1: #d47b2e;  /* orange */
+  --rainbow-2: #7a7abf;  /* purple */
+  --rainbow-3: #d45a84;  /* pink */
+  --rainbow-4: #6db34d;  /* lime */
+  --rainbow-5: #c9a81e;  /* gold */
+  --rainbow-0-bg: rgba(102, 194, 165, 0.12);
+  --rainbow-1-bg: rgba(252, 141, 98, 0.12);
+  --rainbow-2-bg: rgba(141, 160, 203, 0.12);
+  --rainbow-3-bg: rgba(231, 138, 195, 0.12);
+  --rainbow-4-bg: rgba(166, 216, 84, 0.12);
+  --rainbow-5-bg: rgba(255, 217, 47, 0.12);
+
+  --accent: #5c8a3c;
+  --accent-hover: #4a7a2e;
+
+  --status-pass: #4a7a2e;
+  --status-fail: #c44040;
+  --status-partial: #b8860b;
+  --error-bg: rgba(196, 64, 64, 0.06);
+  --complete-bg: rgba(74, 122, 46, 0.06);
+
+  --shadow: 0 2px 8px rgba(45, 58, 37, 0.1);
+  --shadow-dropdown: 0 4px 16px rgba(45, 58, 37, 0.15);
+
+  --keyword-width: 82px;
+  --radius: 6px;
+
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-primary: #1a2016;
+    --bg-secondary: #222d1c;
+    --bg-tertiary: #2a3823;
+    --bg-input: #1e2819;
+    --bg-dropdown: #252f20;
+    --bg-hover: #2e3d26;
+    --bg-highlight: #3a4d30;
+
+    --border: #3a4d30;
+    --border-focus: #7a9e5a;
+
+    --text-primary: #d4e4c8;
+    --text-secondary: #aabf9c;
+    --text-muted: #6e8560;
+    --text-placeholder: #566e48;
+
+    --keyword-bg: #2a3823;
+    --keyword-color: #a3c986;
+
+    --param-color: #e8c94a;
+    --param-bg: rgba(232, 201, 74, 0.1);
+
+    /* Rainbow param colors — ColorBrewer Set2 (dark mode, brightened) */
+    --rainbow-0: #66c2a5;  /* teal-green */
+    --rainbow-1: #fc8d62;  /* orange */
+    --rainbow-2: #8da0cb;  /* purple */
+    --rainbow-3: #e78ac3;  /* pink */
+    --rainbow-4: #a6d854;  /* lime */
+    --rainbow-5: #ffd92f;  /* gold */
+    --rainbow-0-bg: rgba(102, 194, 165, 0.15);
+    --rainbow-1-bg: rgba(252, 141, 98, 0.15);
+    --rainbow-2-bg: rgba(141, 160, 203, 0.15);
+    --rainbow-3-bg: rgba(231, 138, 195, 0.15);
+    --rainbow-4-bg: rgba(166, 216, 84, 0.15);
+    --rainbow-5-bg: rgba(255, 217, 47, 0.15);
+
+    --accent: #7a9e5a;
+    --accent-hover: #8eb86e;
+
+    --status-pass: #7a9e5a;
+    --status-fail: #d45555;
+    --status-partial: #e8c94a;
+    --error-bg: rgba(212, 85, 85, 0.1);
+    --complete-bg: rgba(122, 158, 90, 0.1);
+
+    --shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    --shadow-dropdown: 0 4px 16px rgba(0, 0, 0, 0.4);
+  }
+}
+
+/* Base resets */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 14px;
+  color: var(--text-primary);
+  background: var(--bg-primary);
+}

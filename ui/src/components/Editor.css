@@ -1,0 +1,1202 @@
+.editor {
+  position: relative;
+}
+
+.editor-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  /* Leave right padding so card TEXT doesn't sit under the swim lane,
+     but card BACKGROUNDS extend full width (no margin, just padding). */
+  padding-right: 72px;
+}
+
+/* --- Swim lane: single continuous overlay on the right --- */
+/* A semi-transparent strip. Cards extend underneath it so their
+   background color bleeds through, showing hierarchy. */
+
+/* Editor swim lane removed — Layout marker pane provides the visual strip */
+
+/* --- Cards --- */
+
+.editor-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-input);
+  margin-right: -64px; /* card background extends into the swim lane */
+  padding-right: 64px; /* content (× buttons etc.) stays before the swim lane */
+}
+
+
+.editor-card--scenario {
+  /* Takes up more visual weight */
+}
+
+.editor-card--outline {
+  border-style: dashed;
+}
+
+.editor-card--passed {
+  border-color: var(--accent);
+}
+
+/* Keep dashed style for outlines in passed state */
+.editor-card--outline.editor-card--passed {
+  border-style: dashed;
+}
+
+.editor-card--error {
+  border-color: var(--error, #dc2626);
+}
+
+/* Keep dashed style for outlines in error state */
+.editor-card--outline.editor-card--error {
+  border-style: dashed;
+}
+
+.editor-card--error > .editor-card-header {
+  background: #fef2f2;
+  /* Subtle diagonal stripe pattern for colorblind accessibility */
+  background-image: repeating-linear-gradient(
+    -45deg,
+    transparent,
+    transparent 10px,
+    rgba(220, 38, 38, 0.03) 10px,
+    rgba(220, 38, 38, 0.03) 20px
+  );
+}
+
+.editor-card--error > .editor-card-header .editor-card-keyword {
+  color: var(--error, #dc2626);
+}
+
+.editor-card--background {
+  border-left: 3px solid var(--text-muted);
+}
+
+.editor-card--rule {
+  border-left: 3px solid var(--accent);
+  border-color: var(--accent);
+}
+
+.editor-card-header--rule {
+  background: var(--complete-bg);
+}
+
+.editor-card-keyword--rule {
+  color: var(--accent);
+}
+
+.editor-rule-body {
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.editor-rule-bg {
+  margin: 0;
+}
+
+.editor-rule-child-wrap .editor-card {
+  /* Override: nested extends less into the swim lane → visible indent */
+  margin-right: -48px; /* less than top-level's -64px */
+  padding-right: 48px; /* content stays before the swim lane */
+}
+
+.editor-rule-child-wrap .editor-card-header {
+  margin-right: -48px;
+  padding-right: calc(48px + 12px);
+}
+
+/* Hide the checkbox in nested scenarios — they're already in a Rule */
+.editor-rule-child-wrap .editor-card-checkbox {
+  display: none;
+}
+
+/* Collapse adjacent borders between rule body and nested cards */
+.editor-rule-child-wrap + .editor-rule-child-wrap .editor-card {
+  margin-top: -1px;
+}
+
+/* Child scenario headers */
+.editor-rule-child > .editor-card-header {
+  border-radius: var(--radius) var(--radius) 0 0;
+}
+
+/* Drag handle for rule child — no special positioning, sits in the header controls */
+.editor-drag-handle--rule-child {
+  cursor: grab;
+  color: var(--text-secondary);
+  font-size: 12px;
+  user-select: none;
+}
+
+.editor-card--deleting {
+  border-color: var(--status-fail);
+  background: var(--error-bg);
+  opacity: 0.6;
+}
+
+.editor-card--deleting .editor-card-header {
+  background: var(--error-bg);
+}
+
+.editor-card--deleting .editor-card-name {
+  text-decoration: line-through;
+}
+
+/* Card header */
+
+.editor-card-header {
+  padding: 8px 12px 6px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+  border-radius: var(--radius) var(--radius) 0 0;
+  /* Extend header into the card's right padding so background fills the swim lane */
+  margin-right: -64px;
+  padding-right: calc(64px + 12px); /* keep header text before the swim lane */
+}
+
+.editor-card-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.editor-card-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.editor-drag-handle {
+  cursor: grab;
+  color: var(--text-muted);
+  font-size: 14px;
+  padding: 0 2px;
+  user-select: none;
+  transition: color 0.15s;
+}
+
+.editor-drag-handle:hover {
+  color: var(--text-secondary);
+}
+
+.editor-drag-handle:active {
+  cursor: grabbing;
+}
+
+.editor-card-run {
+  border: none;
+  background: transparent;
+  color: var(--accent);
+  font-size: 11px;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: var(--radius);
+  transition: background 0.15s, color 0.15s;
+}
+
+.editor-card-run:hover {
+  background: var(--bg-hover);
+  color: var(--status-pass);
+}
+
+.editor-card-checkbox {
+  accent-color: var(--accent);
+  cursor: pointer;
+  width: 14px;
+  height: 14px;
+}
+.editor-card-checkbox--disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.editor-card-keyword {
+  color: var(--keyword-color);
+  font-weight: 700;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.editor-card-name {
+  flex: 1;
+  border: none;
+  border-bottom: 1px solid transparent;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 600;
+  outline: none;
+  padding: 2px 0;
+  transition: border-color 0.15s;
+}
+
+.editor-card-name:hover {
+  border-bottom-color: var(--border);
+}
+
+.editor-card-name:focus {
+  border-bottom-color: var(--border-focus);
+}
+
+.editor-card-name::placeholder {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+.editor-card-remove {
+  flex-shrink: 0;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 0 4px;
+  transition: color 0.15s;
+}
+
+.editor-card-remove:hover {
+  color: var(--status-fail);
+}
+
+/* Meta row: description + tags */
+
+.editor-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.editor-card-desc {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 12px;
+  outline: none;
+  padding: 2px 0;
+  border-bottom: 1px solid transparent;
+  transition: border-color 0.15s;
+}
+
+.editor-card-desc:hover {
+  border-bottom-color: var(--border);
+}
+
+.editor-card-desc:focus {
+  border-bottom-color: var(--border-focus);
+}
+
+.editor-card-desc::placeholder {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* Steps inside card */
+
+.editor-card-steps {
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  /* Extend into the card's right padding (swim lane area) */
+  margin-right: -64px;
+  padding-right: calc(64px + 12px);
+}
+
+.editor-rule-child-wrap .editor-card-steps {
+  margin-right: -48px;
+  padding-right: calc(48px + 12px);
+}
+
+.editor-step-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  position: relative;
+  /* Extend row into the swim lane */
+  margin-right: calc(-64px + 8px); /* extend into lane but stop short of card edge */
+}
+
+.editor-rule-child-wrap .editor-step-row {
+  margin-right: calc(-48px + 8px); /* extend into lane, further left than top-level */
+}
+
+/* Delete button — in flex flow before the step input */
+.editor-step-remove {
+  flex-shrink: 0;
+}
+
+/* Drag handle for steps */
+.editor-step-drag {
+  cursor: grab;
+  color: var(--text-muted);
+  font-size: 11px;
+  user-select: none;
+  flex-shrink: 0;
+  padding: 4px 2px;
+  letter-spacing: -2px;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.editor-step-row:hover .editor-step-drag {
+  opacity: 1;
+}
+
+/* Step input fills the full row including into the swim lane */
+.editor-step-row > .step-input-container {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Clear button inside step input stays before the frosted pane */
+.editor-step-row .step-input-clear {
+  margin-right: 44px;
+}
+
+.editor-rule-child-wrap .editor-step-row .step-input-clear {
+  margin-right: 28px;
+}
+
+/* Clear button inside step input stays before the frosted pane */
+.editor-step-row .step-input-clear {
+  margin-right: 28px;
+}
+
+.editor-rule-child-wrap .editor-step-row .step-input-clear {
+  margin-right: 16px;
+}
+
+/* Visual styles for × button (positioning is above) */
+.editor-step-remove {
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 14px;
+  cursor: pointer;
+  padding: 4px;
+  opacity: 0;
+  transition: opacity 0.15s, color 0.15s;
+}
+
+.editor-step-row:hover .editor-step-remove {
+  opacity: 1;
+}
+
+.editor-step-remove:hover {
+  color: var(--status-fail);
+}
+
+/* Add step buttons row inside card */
+
+.editor-add-step-row {
+  display: flex;
+  border-top: 1px dashed var(--border);
+  overflow: hidden;
+  border-radius: 0 0 var(--radius) var(--radius);
+}
+
+.editor-add-step-kw {
+  flex: 1;
+  padding: 4px;
+  border: none;
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  font-size: 11px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.editor-add-step-kw + .editor-add-step-kw {
+  border-left: 1px dashed var(--border);
+}
+
+.editor-add-step-kw:hover {
+  background: var(--bg-hover);
+  color: var(--text-secondary);
+}
+
+.editor-add-step-kw--and {
+  color: var(--text-secondary);
+  flex: 0.5;
+}
+
+/* --- Examples (Scenario Outline) --- */
+
+.editor-examples {
+  padding: 8px 12px 4px;
+  padding-right: 12px; /* datatable fills to the container edge (into swim lane) */
+  border-bottom: 1px solid var(--border);
+  /* Extend into the card's right padding (swim lane area) */
+  margin-right: -52px; /* stop short of card edge like step rows */
+}
+
+.editor-rule-child-wrap .editor-examples {
+  margin-right: -36px;
+}
+
+.editor-examples-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--keyword-color);
+  margin-bottom: 4px;
+}
+
+.editor-examples .datatable-collapsed,
+.editor-examples .datatable-editing {
+  margin-left: 0;
+}
+
+/* --- Pending rule group --- */
+
+.editor-rule-group-start {
+  display: flex;
+  justify-content: center;
+  padding: 6px 0 2px;
+}
+
+.editor-create-rule-btn {
+  padding: 4px 16px;
+  border: 2px dashed var(--accent);
+  border-radius: 12px;
+  background: var(--complete-bg);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, border-style 0.15s;
+}
+
+.editor-create-rule-btn:hover:not(:disabled) {
+  background: var(--bg-hover);
+  border-style: solid;
+}
+.editor-create-rule-btn--disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  border-style: dotted;
+}
+
+.editor-rule-group-item {
+  border-left: 3px solid var(--accent);
+  padding-left: 8px;
+  margin-left: 4px;
+}
+
+.editor-rule-group-end {
+  height: 4px;
+}
+
+/* --- Add background button --- */
+
+.editor-add-background {
+  padding: 8px 16px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 13px;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s, color 0.15s;
+  margin-right: 12px;
+}
+
+.editor-add-background:hover {
+  border-color: var(--border-focus);
+  color: var(--text-primary);
+}
+
+/* --- Add scenario buttons (always at bottom) --- */
+
+.editor-add-buttons {
+  display: flex;
+  gap: 8px;
+  margin-right: 12px;
+}
+
+.editor-add-scenario {
+  flex: 2;
+  padding: 10px 16px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 13px;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+
+.editor-add-scenario:hover {
+  border-color: var(--border-focus);
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+
+.editor-add-scenario--outline {
+  flex: 1;
+}
+
+/* --- Run Lane --- */
+
+.editor-with-lane {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.editor-with-lane > .editor {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Card row — no longer needs flex for run tab */
+.editor-card-row {
+  display: contents;
+}
+
+/* --- Single continuous run lane --- */
+
+.editor-run-lane {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  padding-top: 8px;
+}
+
+/* Continuous vertical line through the entire lane */
+.editor-run-lane::before {
+  content: "";
+  position: absolute;
+  top: 40px; /* below feature run button */
+  bottom: 12px;
+  left: 50%;
+  width: 2px;
+  background: var(--border);
+  transform: translateX(-50%);
+  border-radius: 1px;
+}
+
+/* Per-card run tabs hidden — swim lane is a single overlay */
+.editor-run-tab {
+  display: none;
+}
+
+/* Scenario-level: colored bar showing the card extends into the lane */
+.editor-run-tab::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 4px;
+  background: var(--accent);
+  opacity: 0.4;
+}
+
+/* Error state */
+.editor-card--error + .editor-run-tab::before,
+.editor-card-row:has(.editor-card--error) > .editor-run-tab::before {
+  background: var(--error, #dc2626);
+  opacity: 0.6;
+}
+
+/* Passed state */
+.editor-card--passed + .editor-run-tab::before,
+.editor-card-row:has(.editor-card--passed) > .editor-run-tab::before {
+  background: var(--accent);
+  opacity: 0.6;
+}
+
+/* Rule nesting: thicker bar, different color */
+.editor-run-tab--rule::before {
+  width: 8px;
+  background: var(--accent);
+  opacity: 0.25;
+}
+
+/* Rule children: narrower bar, indented from left */
+.editor-run-tab--rule-child::before {
+  width: 4px;
+  left: 12px;
+  background: var(--accent);
+  opacity: 0.3;
+}
+
+/* Outline: dashed style */
+.editor-run-tab--outline::before {
+  background: repeating-linear-gradient(
+    to bottom,
+    var(--accent) 0px,
+    var(--accent) 4px,
+    transparent 4px,
+    transparent 8px
+  );
+  opacity: 0.35;
+}
+
+/* Background card: muted bar */
+.editor-run-tab--background::before {
+  width: 4px;
+  background: var(--text-muted);
+  opacity: 0.2;
+}
+
+/* Timeline line — connects play button to last dot */
+.editor-run-tab .run-lane-line {
+  position: absolute;
+  top: 24px;
+  bottom: 12px;
+  left: 50%;
+  width: 2px;
+  background: var(--border);
+  transform: translateX(-50%);
+  border-radius: 1px;
+}
+
+/* Run icon — aligned with title row */
+.editor-run-tab .run-lane-play {
+  margin-top: 10px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: none;
+  background: var(--accent);
+  color: white;
+  font-size: 10px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  z-index: 1;
+  transition: background 0.15s, transform 0.15s;
+  flex-shrink: 0;
+}
+
+.editor-run-tab .run-lane-play:hover {
+  background: var(--accent-hover, #3a7d44);
+  transform: scale(1.15);
+}
+
+/* Play button turns red when any step failed */
+.editor-run-tab .run-lane-play[data-result="error"] {
+  background: var(--error, #dc2626);
+}
+.editor-run-tab .run-lane-play[data-result="error"]:hover {
+  background: #b91c1c;
+}
+
+/* Play button turns green when all passed */
+.editor-run-tab .run-lane-play[data-result="passed"] {
+  background: var(--accent);
+}
+
+/* Line green up to last pass — use gradient via inline style */
+.run-lane-line[data-progress] {
+  /* gradient set via inline style */
+}
+
+/* Hide dots inside run tab — we use step-row dots instead */
+.run-lane-dots {
+  display: none;
+}
+
+/* Step dot — positioned at right edge of step row, overlapping into run tab */
+.editor-step-row {
+  position: relative;
+}
+
+/* --- Step dots with run states --- */
+
+.editor-step-dot {
+  position: absolute;
+  right: -9px; /* center the dot on the input's right edge */
+  top: 50%;
+  transform: translateY(-50%);
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  z-index: 3;
+  box-shadow: 0 0 0 2px var(--bg-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  line-height: 1;
+}
+
+/* Not run (default) — grey hollow circle */
+.editor-step-dot,
+.editor-step-dot[data-status="idle"] {
+  background: var(--bg-primary);
+  border: 2px solid var(--text-muted);
+  color: var(--text-muted);
+}
+
+/* Running — animated spinner */
+.editor-step-dot[data-status="running"] {
+  background: var(--bg-primary);
+  border: 2px solid var(--accent);
+  border-top-color: transparent;
+  animation: dot-spin 0.6s linear infinite;
+  color: transparent;
+}
+
+@keyframes dot-spin {
+  to { transform: translateY(-50%) rotate(360deg); }
+}
+
+/* Passed — green tick */
+.editor-step-dot[data-status="passed"] {
+  background: var(--accent);
+  border: 2px solid var(--accent);
+  color: white;
+}
+
+/* Error — red cross */
+.editor-step-dot[data-status="error"] {
+  background: var(--error, #dc2626);
+  border: 2px solid var(--error, #dc2626);
+  color: white;
+}
+
+/* Skipped (previous step failed) — yellow question mark */
+.editor-step-dot[data-status="skipped"] {
+  background: #fef9c3;
+  border: 2px solid #ca8a04;
+  color: #ca8a04;
+}
+
+/* --- Run lane line coloring --- */
+
+.run-lane-line {
+  transition: background 0.3s;
+}
+
+/* Green line segment (via inline style from JS) */
+
+/* Colorblind accessibility: use dashes for the run lane line so it's not color-only */
+.editor-run-lane::before {
+  background: repeating-linear-gradient(
+    to bottom,
+    var(--border) 0px,
+    var(--border) 6px,
+    transparent 6px,
+    transparent 10px
+  );
+}
+
+/* --- Hover propagation --- */
+
+.editor-card-row:hover .editor-step-dot[data-status="idle"] {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.editor-card-row:hover .run-lane-play {
+  transform: scale(1.1);
+}
+
+/* Feature/Rule run button hover highlights all descendant play buttons */
+.editor-run-feature:hover ~ .editor .editor-card-row .run-lane-play,
+.editor-card--rule:hover .run-lane-play {
+  box-shadow: 0 0 0 3px rgba(76, 140, 74, 0.3);
+}
+
+/* --- Step attachments (docstring, datatable) --- */
+
+.editor-step-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.editor-step-group--error {
+  /* No visual change on the group — error styling is on the message below */
+}
+
+/* Inline error message below a failing step */
+.editor-step-error {
+  margin: 4px 0;
+  padding: 6px 10px;
+  font-size: 12px;
+  color: var(--error, #dc2626);
+  line-height: 1.4;
+  background: var(--error-bg, rgba(220, 38, 38, 0.06));
+  border-radius: var(--radius);
+}
+
+.editor-step-error-text {
+  display: block;
+  white-space: pre-wrap;
+}
+
+.editor-step-error-suggestion {
+  display: inline-block;
+  margin-top: 4px;
+  padding: 2px 8px;
+  border: 1px dashed var(--accent);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--accent);
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.editor-step-error-suggestion:hover {
+  background: rgba(76, 140, 74, 0.1);
+}
+
+.editor-step-attachment {
+  margin-left: 90px; /* align with text input, past keyword */
+  margin-right: 24px;
+}
+
+/* --- Lane feature button (top of lane) --- */
+
+.editor-lane-feature-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: none;
+  background: var(--accent);
+  color: white;
+  font-size: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 3;
+  transition: background 0.15s, transform 0.15s;
+  flex-shrink: 0;
+  /* Align with the layout marker pane */
+  position: absolute;
+  top: -4px;
+  right: 22px; /* center within the 72px marker pane */
+}
+
+.editor-lane-feature-btn:hover:not(:disabled) {
+  background: var(--accent-hover, #3a7d44);
+  transform: scale(1.15);
+}
+
+.editor-lane-feature-btn:disabled {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.editor-lane-feature-btn[data-result="error"] {
+  background: var(--error, #dc2626);
+}
+
+.editor-lane-feature-btn[data-result="error"]:hover {
+  background: #b91c1c;
+}
+
+/* --- Rule run button --- */
+
+.editor-rule-run-btn {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: none;
+  background: var(--accent);
+  color: white;
+  font-size: 9px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, transform 0.15s;
+}
+
+.editor-rule-run-btn:hover {
+  transform: scale(1.15);
+}
+
+.editor-rule-run-btn[data-result="error"] {
+  background: var(--error, #dc2626);
+}
+
+/* --- Hover propagation --- */
+
+/* Feature run hover highlights ALL descendant play buttons */
+.editor--run-hover .run-lane-play {
+  box-shadow: 0 0 0 3px rgba(76, 140, 74, 0.3);
+  transform: scale(1.05);
+}
+
+/* Rule run hover highlights child scenario play buttons */
+.editor-card--run-hover .run-lane-play {
+  box-shadow: 0 0 0 3px rgba(76, 140, 74, 0.3);
+  transform: scale(1.05);
+}
+
+/* Also highlight the dots */
+.editor--run-hover .editor-step-dot[data-status="idle"] {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.editor-card--run-hover .editor-step-dot[data-status="idle"] {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* --- Scenario result indicator in the lane --- */
+
+.editor-scenario-run {
+  position: absolute;
+  right: 2px; /* top-right corner of the card header */
+  top: 6px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  cursor: pointer;
+  z-index: 3;
+  transition: background 0.15s, transform 0.15s;
+}
+
+.editor-scenario-run[data-result="idle"] {
+  background: var(--accent);
+  color: white;
+}
+
+.editor-scenario-run[data-result="passed"] {
+  background: var(--accent);
+  color: white;
+  font-size: 14px;
+}
+
+.editor-scenario-run[data-result="error"] {
+  background: var(--error, #dc2626);
+  color: white;
+}
+
+.editor-scenario-run:hover {
+  transform: scale(1.15);
+}
+
+.editor-scenario-run--info {
+  cursor: default;
+}
+.editor-scenario-run--info:hover {
+  transform: none;
+}
+
+/* --- Error message on card --- */
+
+.editor-card-error {
+  padding: 6px 12px;
+  font-size: 12px;
+  color: var(--error, #dc2626);
+  background: #fef2f2;
+  border-top: 2px solid var(--error, #dc2626);
+  border-left: 3px solid var(--error, #dc2626);
+  border-radius: 0 0 var(--radius) var(--radius);
+}
+
+.editor-card-error code {
+  background: #fee2e2;
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-size: 11px;
+}
+
+.editor-card-error-suggestion {
+  display: inline-block;
+  margin-top: 4px;
+  padding: 3px 10px;
+  border: 1px dashed var(--accent);
+  border-radius: var(--radius);
+  background: var(--complete-bg);
+  color: var(--accent);
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.editor-card-error-suggestion:hover {
+  background: var(--accent);
+  color: white;
+  border-style: solid;
+}
+
+/* --- Example row dots in the run lane --- */
+
+.editor-examples-table-wrap {
+  position: relative;
+}
+
+.editor-examples-dots {
+  position: absolute;
+  right: -12px;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  z-index: 3;
+  /* Skip the compact table header row (~22.5px) */
+  padding-top: 22.5px;
+}
+
+/* Hide dots when table is in editing mode */
+.editor-examples-table-wrap:has(.datatable-editing) .editor-examples-dots {
+  display: none;
+}
+
+.editor-example-dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  /* Center each dot within a compact table row (~21px) */
+  box-sizing: border-box;
+  margin: calc((21px - 16px) / 2) 0;
+}
+
+.editor-example-dot[data-status="idle"] {
+  background: var(--bg-primary);
+  border: 2px solid var(--text-muted);
+  color: var(--text-muted);
+}
+
+.editor-example-dot[data-status="passed"] {
+  background: var(--accent);
+  border: 2px solid var(--accent);
+  color: white;
+}
+
+.editor-example-dot[data-status="error"] {
+  background: var(--error, #dc2626);
+  border: 2px solid var(--error, #dc2626);
+  color: white;
+}
+
+.editor-example-dot[data-status="skipped"] {
+  background: #fef9c3;
+  border: 2px solid #ca8a04;
+  color: #ca8a04;
+}
+
+/* --- Save bar --- */
+
+.editor-save-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-surface);
+}
+
+.editor-save-filename {
+  flex: 1;
+  font-size: 13px;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.editor-save-btn {
+  padding: 4px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-input);
+  color: var(--text-primary);
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.editor-save-btn:hover:not(:disabled) {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+}
+
+.editor-save-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.editor-save-btn--as {
+  border-style: dashed;
+}
+
+.editor-save-btn--cancel {
+  padding: 4px 8px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+}
+
+.editor-save-btn--cancel:hover {
+  color: var(--error, #dc2626);
+  background: transparent;
+}
+
+.editor-save-as-dialog {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  background: var(--bg-input);
+}
+
+.editor-save-as-input {
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 12px;
+  min-width: 160px;
+  outline: none;
+}
+
+.editor-save-as-input:focus {
+  border-color: var(--accent);
+}
+
+/* --- Fix alignment for nested rule children --- */
+
+/* Nested icons: push further right to compensate for narrower parent */
+.editor-rule-child-wrap .editor-scenario-run {
+  right: 4px; /* top-right corner of the nested card header */
+  top: 4px;
+}
+
+.editor-rule-child-wrap .editor-step-dot {
+  right: -9px; /* same as top-level — hierarchy comes from step-row extension */
+}
+
+.editor-rule-child-wrap .editor-examples-dots {
+  right: -8px; /* same as top-level — hierarchy comes from examples extension */
+}
+
+/* Nested examples dots — same position, no override needed */

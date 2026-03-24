@@ -1,0 +1,18 @@
+{
+  "scopeName": "gherkin.markdown.injection",
+  "injectionSelector": "L:source.gherkin",
+  "patterns": [
+    {
+      "begin": "^\\s*(```|\"\"\")(markdown|md)\\s*$",
+      "end": "^\\s*(```|\"\"\")\\s*$",
+      "name": "meta.embedded.block.markdown",
+      "contentName": "meta.embedded.block.markdown",
+      "beginCaptures": {
+        "1": { "name": "punctuation.definition.string.begin.gherkin" },
+        "2": { "name": "fenced_code.block.language.gherkin" }
+      },
+      "endCaptures": { "0": { "name": "punctuation.definition.string.end.gherkin" } },
+      "patterns": [{ "include": "text.html.markdown" }]
+    }
+  ]
+}

@@ -1,0 +1,117 @@
+/* --- Collapsed view (default) --- */
+
+.docstring-collapsed {
+  margin-left: calc(var(--keyword-width) + 1px);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-input);
+  cursor: text;
+  position: relative;
+  transition: border-color 0.15s;
+  font-family: ui-monospace, "SF Mono", "Cascadia Code", "Fira Code", Consolas, monospace;
+  font-size: 13px;
+}
+
+.docstring-collapsed:hover {
+  border-color: var(--border-focus);
+  border-style: solid;
+}
+
+.docstring-collapsed-code,
+.docstring-collapsed-plain {
+  margin: 0;
+  padding: 6px 10px;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  line-height: 1.5;
+  color: var(--text-primary);
+}
+
+.docstring-collapsed-code .hljs {
+  background: transparent;
+  padding: 0;
+}
+
+.docstring-collapsed-empty {
+  display: block;
+  padding: 6px 10px;
+  color: var(--text-placeholder);
+  font-style: italic;
+}
+
+.docstring-collapsed-lang {
+  position: absolute;
+  top: 4px;
+  right: 8px;
+  font-size: 10px;
+  color: var(--text-muted);
+  font-family: system-ui, -apple-system, sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  opacity: 0.6;
+}
+
+/* --- Editing view --- */
+
+.docstring-input {
+  margin-left: calc(var(--keyword-width) + 1px);
+  border: 1px solid var(--border-focus);
+  border-radius: var(--radius);
+  background: var(--bg-input);
+  overflow: hidden;
+  font-family: ui-monospace, "SF Mono", "Cascadia Code", "Fira Code", Consolas, monospace;
+  font-size: 13px;
+}
+
+.docstring-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 10px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-tertiary);
+}
+
+.docstring-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+.docstring-lang-select {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-input);
+  color: var(--text-secondary);
+  font-size: 12px;
+  padding: 2px 8px;
+  outline: none;
+  cursor: pointer;
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+.docstring-lang-select:focus {
+  border-color: var(--border-focus);
+}
+
+.docstring-textarea {
+  display: block;
+  width: 100%;
+  padding: 6px 10px;
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: inherit;
+  line-height: 1.5;
+  resize: none;
+  outline: none;
+  overflow: hidden;
+}
+
+.docstring-textarea::placeholder {
+  color: var(--text-placeholder);
+}

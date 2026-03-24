@@ -95,11 +95,16 @@ export function decorateEditor(editor: vscode.TextEditor) {
   // Each decoration type gets its own ranges
   const rainbowRanges = new Map<number, vscode.DecorationOptions[]>();
 
-  // First pass: find table blocks and collect placeholder names per outline
+  // First pass: find table blocks, doc string blocks, and collect placeholder names per outline
   const tableBlocks = findTableBlocks(doc);
+  const docStringBlocks = findDocStringBlocks(doc);
   const outlineParams = findOutlineParams(doc, tableBlocks);
 
   for (let i = 0; i < doc.lineCount; i++) {
+    // Skip lines inside doc string blocks — let the grammar/injection handle coloring
+    if (docStringBlocks.some((b) => i >= b.start && i <= b.end)) {
+      continue;
+    }
     const line = doc.lineAt(i);
     const text = line.text;
 
@@ -239,6 +244,28 @@ interface CellInfo {
   start: number;
   end: number;
   value: string;
+}
+
+function findDocStringBlocks(doc: vscode.TextDocument): TableBlock[] {
+  const blocks: TableBlock[] = [];
+  let openLine = -1;
+  let openDelim = "";
+  for (let i = 0; i < doc.lineCount; i++) {
+    const trimmed = doc.lineAt(i).text.trim();
+    if (openLine < 0) {
+      if (trimmed.startsWith('"""') || trimmed.startsWith("```")) {
+        openLine = i;
+        openDelim = trimmed.startsWith('"""') ? '"""' : "```";
+      }
+    } else {
+      if (trimmed === openDelim || trimmed.startsWith(openDelim)) {
+        blocks.push({ start: openLine, end: i });
+        openLine = -1;
+        openDelim = "";
+      }
+    }
+  }
+  return blocks;
 }
 
 function findTableBlocks(doc: vscode.TextDocument): TableBlock[] {

@@ -26,10 +26,12 @@ body {
   height: calc(100vh - 56px);
   position: sticky;
   top: 56px;
-  transition: margin-left 0.2s;
+  transition: margin-left 0.2s, opacity 0.2s;
 }
 .sidebar.collapsed {
-  display: none;
+  margin-left: -260px;
+  pointer-events: none;
+  opacity: 0;
 }
 .sidebar-header {
   padding: 0.75rem 1rem;
@@ -81,17 +83,24 @@ header {
 header h1 { color: var(--accent); font-size: 1.2rem; }
 header p { color: var(--text-dim); font-size: 0.75rem; }
 
-.sidebar-toggle {
-  background: none;
+/* Sidebar edge toggle arrow */
+.sidebar-edge-toggle {
+  position: fixed;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 51;
+  background: var(--bg-card);
   border: 1px solid var(--border);
-  border-radius: 4px;
-  padding: 0.25rem 0.5rem;
+  border-left: none;
+  border-radius: 0 6px 6px 0;
+  padding: 0.75rem 0.2rem;
   cursor: pointer;
-  color: var(--text-dim);
-  font-size: 1rem;
+  color: var(--text-muted);
+  font-size: 0.6rem;
   line-height: 1;
+  transition: left 0.2s, color 0.15s;
 }
-.sidebar-toggle:hover { border-color: var(--accent); color: var(--accent); }
+.sidebar-edge-toggle:hover { color: var(--accent); }
 
 /* --- Common --- */
 .card {
@@ -282,10 +291,47 @@ header p { color: var(--text-dim); font-size: 0.75rem; }
   opacity: 1;
 }
 
+/* --- Responsive --- */
+
+/* Hide steps panel on medium screens */
+@media (max-width: 1200px) {
+  .steps-panel { display: none; }
+  .builder-panel { max-width: none; }
+}
+
+/* Stack layout on small screens */
 @media (max-width: 900px) {
   .app-layout { flex-direction: column; }
-  .sidebar { width: 100%; height: auto; position: static; border-right: none; border-bottom: 1px solid var(--border); }
+  .sidebar {
+    width: 100%; height: auto; position: static;
+    border-right: none; border-bottom: 1px solid var(--border);
+    max-height: 40vh; overflow-y: auto;
+  }
   .sidebar.collapsed { margin-left: 0; display: none; }
-  .steps-panel { width: 100%; height: auto; position: static; border-left: none; border-top: 1px solid var(--border); }
-  .builder-panel { max-width: none; }
+  .builder-panel { max-width: none; padding: 0.75rem; }
+  .sidebar-edge-toggle { display: none; }
+
+  /* Header: stack logo + actions */
+  header {
+    flex-wrap: wrap;
+    height: auto;
+    padding: 0.5rem 0.75rem;
+    gap: 0.4rem;
+  }
+  header h1 { font-size: 1rem; flex: 1; }
+
+  /* Compact cards */
+  .card { padding: 0.5rem; }
+  .card-label { font-size: 0.6rem; }
+  .field { padding: 0.35rem 0.5rem; font-size: 0.82rem; }
+
+  /* Step keyword buttons wrap */
+  .btn-add { font-size: 0.75rem; padding: 0.25rem; }
+}
+
+/* Extra small */
+@media (max-width: 600px) {
+  header h1 { display: none; }
+  .sidebar-content { padding: 0.25rem; }
+  .feature-item { font-size: 0.75rem; padding: 0.3rem 0.4rem; }
 }

@@ -1,20 +1,24 @@
 import { useState, useRef } from "react";
 import { useValidation } from "../../hooks/useValidation";
 import { useAppState, useDispatch } from "../../store";
+import { TableEditor } from "./TableEditor";
 import type { StepDefinition } from "../../types";
 
 interface StepRowProps {
-  scenarioId: string | null; // null = background
+  scenarioId: string | null;
   stepId: string;
   keyword: string;
   text: string;
   priorContextWrites?: string[];
   onStepFocus?: (keyword: string, text: string) => void;
-  examples?: { headers: string[]; rows: string[][] }; // for Scenario Outline substitution
+  onStepBlur?: () => void;
+  examples?: { headers: string[]; rows: string[][] };
   dataTable?: { headers: string[]; rows: string[][] };
+  docString?: string;
+  runStatus?: "passed" | "failed" | "skipped" | "undefined" | null;
 }
 
-export function StepRow({ scenarioId, stepId, keyword, text, priorContextWrites = [], onStepFocus, examples, dataTable }: StepRowProps) {
+export function StepRow({ scenarioId, stepId, keyword, text, priorContextWrites = [], onStepFocus, onStepBlur, examples, dataTable, docString, runStatus }: StepRowProps) {
   const dispatch = useDispatch();
   const { steps } = useAppState();
 
@@ -72,7 +76,20 @@ export function StepRow({ scenarioId, stepId, keyword, text, priorContextWrites 
       if (seen.has(display)) continue;
       seen.add(display);
       const displayLower = display.toLowerCase();
-      if (!textLower || displayLower.startsWith(textLower)) {
+      // Match by display prefix OR by pattern prefix (for filled-in params)
+      let isMatch = !textLower || displayLower.startsWith(textLower);
+      if (!isMatch && textLower && step.segments.length > 0) {
+        // Check if text matches the pattern with params filled in
+        let prefixText = "";
+        for (const seg of step.segments) {
+          if (seg.param) break;
+          prefixText += seg.text;
+        }
+        if (prefixText && textLower.startsWith(prefixText.toLowerCase())) {
+          isMatch = true;
+        }
+      }
+      if (isMatch) {
         const hasParam = step.segments.some((s) => s.param);
         let prefix = "";
         if (hasParam) {
@@ -96,7 +113,8 @@ export function StepRow({ scenarioId, stepId, keyword, text, priorContextWrites 
   };
 
   const matches = text.length > 0 ? getMatches() : [];
-  const shouldShowDropdown = showDropdown && matches.length > 0 && !validation?.complete;
+  // Show dropdown if there are multiple matches (even when partially filled)
+  const shouldShowDropdown = showDropdown && matches.length > 0 && (!validation?.complete || matches.length > 1);
 
   const acceptSuggestion = (idx: number) => {
     if (idx >= 0 && idx < matches.length) {
@@ -224,6 +242,17 @@ export function StepRow({ scenarioId, stepId, keyword, text, priorContextWrites 
   return (
     <div style={{ marginBottom: "0.35rem" }}>
       <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+        {/* Run status icon */}
+        {runStatus && (
+          <span style={{
+            width: 18, height: 18, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center",
+            fontSize: "0.65rem", fontWeight: 700, flexShrink: 0,
+            background: runStatus === "passed" ? "var(--success)" : runStatus === "failed" ? "var(--error)" : "var(--border)",
+            color: runStatus === "passed" || runStatus === "failed" ? "#fff" : "var(--text-dim)",
+          }}>
+            {runStatus === "passed" ? "\u2713" : runStatus === "failed" ? "\u2717" : "\u2013"}
+          </span>
+        )}
         <select
           className="field"
           style={{ width: "auto", fontWeight: 600, color: "var(--keyword)", cursor: "grab" }}
@@ -237,7 +266,7 @@ export function StepRow({ scenarioId, stepId, keyword, text, priorContextWrites 
           <option>And</option>
           <option>But</option>
         </select>
-        <div style={{ position: "relative", flex: 1, fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif", fontSize: "0.85rem" }}>
+        <div className="step-input-container" style={{ position: "relative", flex: 1, fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif", fontSize: "0.85rem" }}>
           {/* Highlight overlay — exactly mirrors the input layout */}
           {paramHighlight && (
             <div
@@ -257,7 +286,7 @@ export function StepRow({ scenarioId, stepId, keyword, text, priorContextWrites 
             >
               {paramHighlight.map((part, i) =>
                 part.isParam ? (
-                  <span key={i} style={{ color: "var(--param)", textDecoration: "underline", textDecorationColor: "var(--param)", textUnderlineOffset: "2px" }}>{part.text}</span>
+                  <span key={i} title={part.name} style={{ color: "var(--param)", textDecoration: "underline", textDecorationColor: "var(--param)", textUnderlineOffset: "2px", pointerEvents: "auto", cursor: "help" }}>{part.text}</span>
                 ) : (
                   <span key={i} style={{ color: "transparent" }}>{part.text}</span>
                 )
@@ -271,7 +300,16 @@ export function StepRow({ scenarioId, stepId, keyword, text, priorContextWrites 
             value={text}
             onChange={(e) => { setField("text", e.target.value); setShowDropdown(true); setSelectedIdx(0); onStepFocus?.(keyword, e.target.value); }}
             onFocus={handleFocus}
-            onBlur={() => setTimeout(() => setShowDropdown(false), 150)}
+            onBlur={() => {
+              setTimeout(() => setShowDropdown(false), 150);
+              setTimeout(() => {
+                // Only clear if focus moved outside a step input
+                const active = document.activeElement;
+                if (!active || !active.closest?.(".step-input-container")) {
+                  onStepBlur?.();
+                }
+              }, 250);
+            }}
             onKeyDown={handleKeyDown}
             placeholder="start typing to see suggestions..."
           />
@@ -309,67 +347,48 @@ export function StepRow({ scenarioId, stepId, keyword, text, priorContextWrites 
       {/* Data table */}
       {dataTable && (
         <div style={{ marginLeft: "4.5rem", marginTop: "0.2rem", marginBottom: "0.2rem" }}>
-          <table style={{ borderCollapse: "collapse", fontFamily: "var(--mono)", fontSize: "0.75rem" }}>
-            <thead>
-              <tr>
-                {dataTable.headers.map((h, i) => (
-                  <th key={i} style={{ padding: 0, border: "1px solid var(--border)", background: "var(--surface)" }}>
-                    <input
-                      value={h}
-                      onChange={(e) => {
-                        const nh = [...dataTable.headers];
-                        nh[i] = e.target.value;
-                        if (scenarioId) dispatch({ type: "SET_STEP_TABLE", scenarioId, stepId, table: { ...dataTable, headers: nh } });
-                      }}
-                      style={{ width: "100%", border: "none", padding: "0.15rem 0.4rem", fontWeight: 600, color: "var(--param)", background: "transparent", fontFamily: "inherit", fontSize: "inherit", textAlign: "center" }}
-                    />
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {dataTable.rows.map((row, ri) => (
-                <tr key={ri}>
-                  {row.map((cell, ci) => (
-                    <td key={ci} style={{ padding: 0, border: "1px solid var(--border)" }}>
-                      <input
-                        value={cell}
-                        onChange={(e) => {
-                          const nr = dataTable.rows.map(r => [...r]);
-                          nr[ri][ci] = e.target.value;
-                          if (scenarioId) dispatch({ type: "SET_STEP_TABLE", scenarioId, stepId, table: { ...dataTable, rows: nr } });
-                        }}
-                        style={{ width: "100%", border: "none", padding: "0.15rem 0.4rem", background: "transparent", fontFamily: "inherit", fontSize: "inherit", textAlign: "center" }}
-                      />
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <div style={{ display: "flex", gap: "0.25rem", marginTop: "0.15rem" }}>
-            <button
-              style={{ fontSize: "0.65rem", padding: "0.1rem 0.4rem", border: "1px dashed var(--border)", background: "transparent", color: "var(--accent)", borderRadius: "3px", cursor: "pointer" }}
-              onClick={() => {
-                if (scenarioId) dispatch({ type: "SET_STEP_TABLE", scenarioId, stepId, table: { headers: [...dataTable.headers, "col"], rows: dataTable.rows.map(r => [...r, ""]) } });
-              }}
-            >+ Col</button>
-            <button
-              style={{ fontSize: "0.65rem", padding: "0.1rem 0.4rem", border: "1px dashed var(--border)", background: "transparent", color: "var(--accent)", borderRadius: "3px", cursor: "pointer" }}
-              onClick={() => {
-                if (scenarioId) dispatch({ type: "SET_STEP_TABLE", scenarioId, stepId, table: { ...dataTable, rows: [...dataTable.rows, dataTable.headers.map(() => "")] } });
-              }}
-            >+ Row</button>
-          </div>
+          <TableEditor
+            headers={dataTable.headers}
+            rows={dataTable.rows}
+            onChange={(h, r) => { if (scenarioId) dispatch({ type: "SET_STEP_TABLE", scenarioId, stepId, table: { headers: h, rows: r } }); }}
+          />
         </div>
       )}
       {/* Auto-show table when step accepts data_table */}
+      {/* Auto-prompt for data table */}
       {!dataTable && validation?.accepts_table && scenarioId && (
         <div style={{ marginLeft: "4.5rem" }}>
           <button
             style={{ fontSize: "0.65rem", padding: "0.15rem 0.5rem", border: "1px dashed var(--accent)", background: "transparent", color: "var(--accent)", borderRadius: "3px", cursor: "pointer" }}
             onClick={() => dispatch({ type: "SET_STEP_TABLE", scenarioId, stepId, table: { headers: ["col1", "col2"], rows: [["", ""]] } })}
           >This step requires a data table — click to add</button>
+        </div>
+      )}
+      {/* Doc string */}
+      {docString !== undefined && (
+        <div style={{ marginLeft: "4.5rem", marginTop: "0.2rem", marginBottom: "0.2rem" }}>
+          <textarea
+            value={docString}
+            onChange={(e) => {
+              if (scenarioId) dispatch({ type: "SET_STEP_DOCSTRING", scenarioId, stepId, docString: e.target.value });
+            }}
+            placeholder="Enter doc string content..."
+            style={{
+              width: "100%", minHeight: "4rem", padding: "0.4rem 0.6rem",
+              border: "1px solid var(--border)", borderRadius: "4px",
+              background: "var(--bg-input)", color: "var(--text)",
+              fontFamily: "var(--mono)", fontSize: "0.8rem", resize: "vertical",
+            }}
+          />
+        </div>
+      )}
+      {/* Auto-prompt for doc string */}
+      {docString === undefined && validation?.accepts_docstring && scenarioId && (
+        <div style={{ marginLeft: "4.5rem" }}>
+          <button
+            style={{ fontSize: "0.65rem", padding: "0.15rem 0.5rem", border: "1px dashed var(--accent)", background: "transparent", color: "var(--accent)", borderRadius: "3px", cursor: "pointer" }}
+            onClick={() => dispatch({ type: "SET_STEP_DOCSTRING", scenarioId, stepId, docString: "" })}
+          >This step requires a doc string — click to add</button>
         </div>
       )}
       {contextBadge}

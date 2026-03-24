@@ -63,17 +63,20 @@ def test_load_feature_from_sidebar(page: Page) -> None:
 def test_run_tests(page: Page) -> None:
     """Run Tests executes the feature and shows inline results."""
     page.get_by_text("Basic arithmetic").first.click()
-    page.get_by_text("Run Tests", exact=True).click()
+    page.get_by_text("Run", exact=True).click()
     page.wait_for_selector("text=PASSED", timeout=5000)
     expect(page.get_by_text("PASSED").first).to_be_visible()
 
 
 def test_toggle_sidebar(page: Page) -> None:
-    """The sidebar can be toggled."""
+    """The sidebar can be toggled via the edge arrow."""
     sidebar = page.locator(".sidebar")
-    toggle = page.locator(".sidebar-toggle")
-    expect(sidebar).to_be_visible()
-    toggle.click()
-    expect(sidebar).to_be_hidden()
-    toggle.click()
-    expect(sidebar).to_be_visible()
+    arrow = page.locator(".sidebar-edge-toggle")
+    # Sidebar starts open
+    expect(sidebar).not_to_have_class("collapsed")
+    # Close via edge arrow
+    arrow.click()
+    expect(sidebar).to_have_class("sidebar collapsed")
+    # Reopen via edge arrow
+    arrow.click()
+    expect(sidebar).not_to_have_class("collapsed")

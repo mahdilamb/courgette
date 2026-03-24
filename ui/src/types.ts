@@ -29,9 +29,11 @@ export interface FeatureStep {
   keyword: string;
   text: string;
   data_table?: DataTableData;
+  doc_string?: string | { content: string; media_type?: string | null };
 }
 
 export interface ExamplesData {
+  name?: string;
   headers: string[];
   rows: string[][];
 }
@@ -43,6 +45,11 @@ export interface FeatureScenario {
   examples?: ExamplesData;
 }
 
+export interface LibraryRule {
+  name: string;
+  scenarios: FeatureScenario[];
+}
+
 export interface LibraryFeature {
   path: string;
   name: string;
@@ -50,6 +57,7 @@ export interface LibraryFeature {
   tags: Array<string | { name: string }>;
   background: FeatureStep[];
   scenarios: FeatureScenario[];
+  rules: LibraryRule[];
 }
 
 export interface ValidationResult {
@@ -60,6 +68,7 @@ export interface ValidationResult {
   context_writes?: string[];
   context_reads?: string[];
   accepts_table?: boolean;
+  accepts_docstring?: boolean;
 }
 
 export interface StepResultData {
@@ -90,6 +99,7 @@ export interface BuilderStep {
   keyword: string;
   text: string;
   data_table?: DataTableData;
+  doc_string?: string;
 }
 
 export interface BuilderScenario {

@@ -1,0 +1,242 @@
+.feature-header {
+  flex: 1;
+  min-width: 0;
+}
+
+/* --- Description + tags row --- */
+
+.feature-desc-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+/* --- Tags (bottom right) --- */
+
+.feature-tags-area {
+  flex-shrink: 0;
+  display: flex;
+  align-items: flex-end;
+}
+
+.feature-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  justify-content: flex-end;
+}
+
+.feature-tag {
+  font-size: 11px;
+  color: var(--param-color);
+  background: var(--param-bg);
+  padding: 1px 8px;
+  border-radius: 10px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.feature-tags-placeholder {
+  font-size: 11px;
+  color: var(--text-placeholder);
+  font-style: italic;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+/* --- Title row --- */
+
+.feature-title-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.feature-keyword {
+  color: var(--keyword-color);
+  font-weight: 700;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.feature-title-input {
+  flex: 1;
+  border: none;
+  border-bottom: 1px solid transparent;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 18px;
+  font-weight: 600;
+  outline: none;
+  padding: 2px 0;
+  transition: border-color 0.15s;
+}
+
+.feature-title-input:hover {
+  border-bottom-color: var(--border);
+}
+
+.feature-title-input:focus {
+  border-bottom-color: var(--border-focus);
+}
+
+.feature-title-input::placeholder {
+  color: var(--text-placeholder);
+  font-weight: 400;
+}
+
+.feature-lang-select {
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-input);
+  color: var(--text-muted);
+  font-size: 12px;
+  padding: 2px 6px;
+  outline: none;
+  cursor: pointer;
+}
+
+.feature-lang-select:focus {
+  border-color: var(--border-focus);
+}
+
+/* --- Description --- */
+
+.feature-desc-collapsed {
+  flex: 1;
+  min-width: 0;
+  padding: 4px 0;
+  padding-left: 2px;
+  color: var(--text-secondary);
+  font-size: 14px;
+  cursor: text;
+  border-bottom: 1px solid transparent;
+  transition: border-color 0.15s;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.feature-desc-collapsed:hover {
+  border-bottom-color: var(--border);
+}
+
+.feature-desc-placeholder {
+  color: var(--text-placeholder);
+  font-style: italic;
+}
+
+.feature-desc-textarea {
+  flex: 1;
+  min-width: 0;
+  display: block;
+  padding: 4px 2px;
+  border: none;
+  border-bottom: 1px solid var(--border-focus);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-family: inherit;
+  line-height: 1.5;
+  resize: none;
+  outline: none;
+  overflow: hidden;
+}
+
+.feature-desc-textarea::placeholder {
+  color: var(--text-placeholder);
+  font-style: italic;
+}
+
+/* --- File info bar --- */
+
+.feature-file-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  margin-top: 4px;
+  border-top: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+
+.feature-file-name {
+  font-size: 12px;
+  color: var(--text-muted);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.feature-file-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.feature-save-btn {
+  padding: 3px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-input);
+  color: var(--text-primary);
+  font-size: 11px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.feature-save-btn:hover:not(:disabled) {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+}
+
+.feature-save-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.feature-save-btn--as {
+  border-style: dashed;
+}
+
+.feature-save-btn--reset {
+  border-color: var(--text-muted);
+  color: var(--text-muted);
+}
+.feature-save-btn--reset:hover {
+  border-color: var(--error, #dc2626);
+  color: var(--error, #dc2626);
+}
+
+.feature-save-as-row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.feature-save-as-input {
+  flex: 1;
+  padding: 3px 8px;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  font-size: 12px;
+  outline: none;
+}
+
+.feature-save-btn--cancel {
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 2px 6px;
+}
+
+.feature-save-btn--cancel:hover {
+  color: var(--error, #dc2626);
+}
