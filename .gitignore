@@ -157,3 +157,6 @@ vite.config.ts.timestamp-*
 # Claude Code
 .claude/
 /.vscode
+
+# Playwright
+/ui/test-results

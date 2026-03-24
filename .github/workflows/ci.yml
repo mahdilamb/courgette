@@ -49,6 +49,8 @@ jobs:
       - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
         with:
           node-version: "20"
+          cache: npm
+          cache-dependency-path: ui/package-lock.json
 
       - name: Set up Python
         run: uv python install 3.13
@@ -56,11 +58,29 @@ jobs:
       - name: Install Python dependencies
         run: uv sync --extra dev --extra ui
 
-      - name: Build React UI
-        run: cd ui && npm ci && npm run build
+      - name: Install npm dependencies
+        run: cd ui && npm ci
 
-      - name: Install Playwright
-        run: cd ui && npx playwright install --with-deps chromium
+      - name: Get Playwright version
+        id: playwright-version
+        run: echo "version=$(cd ui && npx playwright --version | awk '{print $2}')" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright-version.outputs.version }}
+
+      - name: Install Playwright browsers
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: cd ui && npx playwright install chromium
+
+      - name: Install Playwright system dependencies
+        run: cd ui && npx playwright install-deps chromium
+
+      - name: Build React UI
+        run: cd ui && npm run build
 
       - name: Run Playwright e2e tests
         run: cd ui && npx playwright test --reporter=line
