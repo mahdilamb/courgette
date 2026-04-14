@@ -19,7 +19,7 @@ dependencies = []
 
 [project.optional-dependencies]
 color = ["colorama>=0.4"]
-dev = ["pytest>=8", "mypy", "ruff", "playwright", "pytest-playwright"]
+dev = ["pytest>=9.0.3", "mypy", "ruff", "playwright", "pytest-playwright"]
 ui = ["courgette-ui"]
 
 [project.scripts]
